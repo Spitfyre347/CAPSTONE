@@ -36,7 +36,7 @@ public class CapstoneFileReader{
 
                 if(line.isEmpty()) continue;
 
-                //If it's a comment line, we don't give a shit
+                //If it's a comment line, we don't care
                 if (line.charAt(0) == 'c'){
                     //do nothing
                 } 
@@ -113,7 +113,7 @@ public class CapstoneFileReader{
                                 literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
                                 literalCounter++;
 
-                                //Shitty fix - ask Charl for clarification
+                                //Temporary workaround (needs attention later)
                                 if(literalCounter == lineHolder.length - 2){
                                     break;
                                 }
@@ -149,4 +149,5 @@ public class CapstoneFileReader{
             e.printStackTrace();
         }
     }
+
 }
