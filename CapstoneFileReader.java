@@ -3,11 +3,36 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.Arrays;
 
-
 public class CapstoneFileReader{
 
-    public static void main(String[] args){
-        String filePath = "test.txt";
+    private int[] costs = new int[1];
+    private int[] literals = new int[1];
+    private String[] operators = new String[1];
+    private int[] values = new int[1];
+
+    public int[] getCosts()
+    {
+        return costs;
+    }
+
+    public int[] getLiterals()
+    {
+        return literals;
+    } 
+
+    public String[] getOperators()
+    {
+        return operators;
+    }
+
+    public int[] getValues()
+    {
+        return values;
+    }
+
+    public void readFile(String path)
+    {
+        String filePath = path;
 
         try (BufferedReader bReader = new BufferedReader(new FileReader(filePath))) {
 
@@ -19,15 +44,7 @@ public class CapstoneFileReader{
             int numVariables = 0;
             int numClauses = 0;
 
-            int[] costs = new int[1];
-            int[] literals = new int[1];
-            String[] operators = new String[1];
-            int[] values = new int[1];
-            
-
             String[] lineHolder = new String[1];
-
-            
 
             while ((line = bReader.readLine()) != null){
 
@@ -61,11 +78,6 @@ public class CapstoneFileReader{
 
                     initialised = true;
 
-
-
-                    
-
-                  
                 } else {
 
                     lineHolder = line.split("\\s+");
@@ -79,16 +91,13 @@ public class CapstoneFileReader{
                             break;
                         }
 
-
                         //Is the clause too short? Not sure how to check if it's too long yet. Hard cost?
                         if(lineHolder.length < 3){
                             System.out.println("Invalid line - Line too short, missing information");
                             System.out.println("Line: " + line);
                         }
 
-                        
                         costs[clauseCounter] = Integer.parseInt(lineHolder[0]);
-
                         
                         int literalCounter = 1;
                         int literalNum = Integer.parseInt(lineHolder[literalCounter]);
@@ -138,11 +147,14 @@ public class CapstoneFileReader{
                 }
             }
 
-
+            System.out.println("Costs:");
             System.out.println(Arrays.toString(costs));
+            System.out.println("Literals:");
             System.out.println(Arrays.toString(literals));
             System.out.println(literals.length);
+            System.out.println("Operators:");
             System.out.println(Arrays.toString(operators));
+            System.out.println("Values:");
             System.out.println(Arrays.toString(values));
 
         } catch (IOException e){
