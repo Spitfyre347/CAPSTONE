@@ -11,7 +11,6 @@ public class CapstoneFileReader {
     // These arrays will be populated with the data read from the file
     private int[] costs = null;
     private int[] literals = null;
-    private String[] operators = null;
     private int[] values = null;
 
     private String[] lines = null; // To hold the lines read from the file
@@ -22,6 +21,7 @@ public class CapstoneFileReader {
 
     int numVariables = 0;
     int numClauses = 0;
+    int hardCost = -1;
 
     // Getters for the instance variables
     public int getNumVars() { return numVariables; }
@@ -30,6 +30,12 @@ public class CapstoneFileReader {
     public int[] getLiterals() { return literals; }
     public int[] getValues() { return values; }
 
+    public int getHardCost() {
+        if (hardCost == -1) {
+            throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
+        }
+        return hardCost;
+    }
 
     /**
      * Reads a file and parses its contents into the instance variables.
@@ -51,7 +57,7 @@ public class CapstoneFileReader {
 
         // Initialize variables
         boolean initialised = false; // Flag to check if the header line has been processed
-        int hardCost = 0; // Hard cost for the clauses, as specified in the header line
+        hardCost = -1; // Hard cost for the clauses, as specified in the header line
 
         int clauseCounter = 0; // Index for current clause processed
         int newClauseCounter = 0; // Index for actual clauses processed (including parsing)
@@ -96,8 +102,6 @@ public class CapstoneFileReader {
                     literals = new int[(numClauses + exactClauseCounter) * numVariables];
                     values = new int[numClauses + exactClauseCounter];
                     
-                    // Need to delete
-                    operators = new String[numClauses];
 
                     // Testing array
                     oldClauses = new String[numClauses];
@@ -206,58 +210,7 @@ public class CapstoneFileReader {
             newClauseCounter++;
         }
 
-            /**int literalCounter = 1;
-            int literalNum = Integer.parseInt(lineHolder[literalCounter]);
-            
-            //Now, we finally have a valid clause. Now, does it have a string operator, or does it end in zero?
-            try{
-                int num2 = Integer.parseInt(lineHolder[lineHolder.length-2]);
-                //It ends in zero (checking this still needs to be added)
-
-                while(literalNum !=0){
-                    literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
-                    literalCounter++;
-                    literalNum = Integer.parseInt(lineHolder[literalCounter]);
-                }
-
-                values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
-                clauseCounter++;
-
-            } catch(Exception e){
-                //It has a string operator in the second last position
-
-                while (literalCounter < lineHolder.length -2){
-                    literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
-                    literalCounter++;
-
-                    //Temporary workaround (needs attention later)
-                    if(literalCounter == lineHolder.length - 2){
-                        break;
-                    }
-                    literalNum = Integer.parseInt(lineHolder[literalCounter]);
-                }
-
-                operators[clauseCounter] = lineHolder[literalCounter];
-                values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
-                clauseCounter++;
-            }
-            
-        }*/
-
-        System.out.println("Costs:");
-        System.out.println(Arrays.toString(costs));
-        System.out.println("Literals:");
-        System.out.println(Arrays.toString(literals));
-        System.out.println(literals.length);
-        System.out.println("Operators:");
-        System.out.println(Arrays.toString(operators));
-        System.out.println("Values:");
-        System.out.println(Arrays.toString(values));
-
-        System.out.println("Old Clauses:");
-        System.out.println(Arrays.toString(oldClauses));
-        System.out.println("Clauses:");
-        System.out.println(Arrays.toString(clauses));
+        System.out.println(this.toString());
     }
 
     public static void main(String[] args) {
@@ -312,5 +265,19 @@ public class CapstoneFileReader {
         for (int i = 1; i < len -2 ; i++){
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
         }
+    }
+
+
+    public String toString(){
+        return "CapstoneFileReader - Parsed Input Results \n-----------------------------------\n" +
+                "numVariables = " + numVariables +
+                "\n\nnumClauses = " + numClauses +
+                "\n\nhardCost = " + hardCost +
+                "\n\ncosts = " + Arrays.toString(costs) +
+                "\n\nliterals = " + Arrays.toString(literals) +
+                "\n\nvalues = " + Arrays.toString(values) +
+                "\n\noldClauses = " + Arrays.toString(oldClauses) +
+                "\n\nclauses = " + Arrays.toString(clauses) +
+                "\n}";
     }
 }
