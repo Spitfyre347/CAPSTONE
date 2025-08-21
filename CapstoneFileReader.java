@@ -12,11 +12,20 @@ public class CapstoneFileReader{
     private String[] operators = null;
     private int[] values = null;
 
-    // Getters for the instance variables
-    public int[] getCosts() { return costs; }
-    public int[] getLiterals() { return literals; } 
-    public String[] getOperators() { return operators; }
-    public int[] getValues() { return values; }
+    int numVariables = 0;
+    int numClauses = 0;
+
+    public int getNumVars() { return numVariables; }
+
+    public int getNumClauses()
+    {
+        return numClauses;
+    }
+
+    public int[] getCosts()
+    {
+        return costs;
+    }
 
 
     /**
@@ -35,8 +44,6 @@ public class CapstoneFileReader{
             String line = "";
             int clauseCounter = 0;
             int hardCost = 0;
-            int numVariables = 0;
-            int numClauses = 0;
 
             String[] lineHolder = null;
 
