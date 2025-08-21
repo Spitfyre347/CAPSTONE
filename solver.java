@@ -19,7 +19,7 @@ public class solver {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test2.txt");
+        reader.readFile("dubois20.cnf");
 
         // Get data from reader
         numVars = reader.getNumVars();
