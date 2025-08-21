@@ -4,7 +4,7 @@ import java.util.Random;
 public class solver {
 
     // Max runtime
-    private final static int T = 1000;
+    private final static int T = 10000;
 
     static int numVars;
     static int numClauses;
@@ -19,7 +19,7 @@ public class solver {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test.txt");
+        reader.readFile("./samples/aim-50-1_6-no-1.cnf");
 
         // Get data from reader
         numVars = reader.getNumVars();
@@ -66,6 +66,10 @@ public class solver {
 
         System.out.println("Initial cost: " + (Integer.toString(curCost))); ///
 
+        // Record overall best assignment and best score
+        BitSet bestAssignment = new BitSet(numVars);
+        int bestScore = Integer.MAX_VALUE;
+
         // Create new int array to store updated costs for each clause
         int[] updatedCosts = new int[numClauses];
         int t = 0;
@@ -73,7 +77,7 @@ public class solver {
         int curFlippedVar = 0;
         int minCostFlip;
         int tempCost = 0;
-        while (t < T)
+        while (true)
         {
             // for each variable:
             //      flip, then update cost for affected clauses
@@ -98,7 +102,7 @@ public class solver {
                 vars.flip(i); // flip var back
 
                 // take min to get which flip results in lowest cost
-                if (tempCost <= minCost) 
+                if (tempCost < minCost) 
                 {
                     minCost = tempCost;
                     minCostFlip = i;
@@ -108,14 +112,26 @@ public class solver {
             // Check if no improvements made, then with prob 0.2 flip random var and keep going, else quit
             if (minCostFlip == -1) 
             {
-                if (random.nextDouble() < 0.2)
+                if (minCost < bestScore)
                 {
-                    minCostFlip = random.nextInt(numVars);
+                    bestScore = minCost;
+                    bestAssignment = (BitSet)vars.clone();
+                    System.out.println("New Best Cost: " + Integer.toString(bestScore));
                 }
-                else
+
+                if (t > T) {break;} // if time is up, end run
+
+                // Assuming time isn't up - restart algorithm with randomly assigned vars
+                for (int i=0; i < numVars; i++)
                 {
-                    break;
+                    // Initiate boolean assignment randomly
+                    if (random.nextInt(2) == 1)
+                    {
+                        vars.set(i);
+                    }
                 }
+
+                minCostFlip = random.nextInt(numVars);
             }
 
             // flip variable and update clauses if it results in an improvement
@@ -131,8 +147,19 @@ public class solver {
                 curCost = curCost + currentCosts[j];
             }
             t++;
-            System.out.println("Current Cost: " + Integer.toString(curCost));
         }
+
+        System.out.println("Final Best Cost: " + Integer.toString(bestScore));
+
+        // Create string output
+        String output = "(";
+        for (int k=0; k < numVars-1; k++)
+        {
+            output = output + ((bestAssignment.get(k)) ? "1" : "0") + ", ";
+        }
+        output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
+
+        System.out.println("Corresponding Assignment: " + output);
     }
 
     public static boolean checkSAT(int clauseToCheck)
