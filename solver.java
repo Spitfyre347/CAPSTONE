@@ -138,18 +138,4 @@ public class solver {
         // If clause is satisfied, cost is 0, otherwise return associated cost
         return (checkSAT(clause)) ? 0 : clauseCosts[clause];
     }
-
-    public static int[] updateClauseCosts(int[] clausesToCheck)
-    {
-        // Create new int array to store updated costs for each clause
-        int[] updatedCosts = new int[numClauses];
-        for (int i=0; i < numClauses; i++)
-        {
-            // If the current clause must be checked (i.e. has been affected by a flip), then update cost
-            updatedCosts[i] = (clausesToCheck[i] == 1) ? calcCurrentClauseCost(i) : currentCosts[i];
-            totalCost = totalCost + updatedCosts[i];
-        }
-
-        return updatedCosts;
-    }
 }
