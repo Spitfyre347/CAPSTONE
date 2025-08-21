@@ -49,6 +49,17 @@ public class CapstoneFileReader {
 
     public void readFile(String path)
     {
+        if (path.contains("txt")){
+            // Call the appropriate method based on file type
+            lines = readTXT(path);
+        }
+        else if (path.contains("cnf")) {
+            // Call the appropriate method based on file type
+            lines = readCNF(path);
+        } else {
+            throw new IllegalArgumentException("Unsupported file format. Please provide a .txt or .cnf file.");
+        }
+
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
             // Briefly uses a list object - may need to change
@@ -267,6 +278,25 @@ public class CapstoneFileReader {
         values[index] = Integer.parseInt(in[len-1]);
         for (int i = 1; i < len -2 ; i++){
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+        }
+    }
+
+    private String[] readTXT (String path){
+        try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
+            // Briefly uses a list object - may need to change
+            return Files.readAllLines(Paths.get(path)).toArray(new String[0]);
+        } catch (IOException e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private String[] readCNF (String path){
+        try {
+            return Files.readAllLines(Paths.get(path)).toArray(new String[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        return null;
         }
     }
 
