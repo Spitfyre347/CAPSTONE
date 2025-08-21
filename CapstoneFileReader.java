@@ -15,17 +15,10 @@ public class CapstoneFileReader{
     int numVariables = 0;
     int numClauses = 0;
 
+    // Getters for the instance variables
     public int getNumVars() { return numVariables; }
-
-    public int getNumClauses()
-    {
-        return numClauses;
-    }
-
-    public int[] getCosts()
-    {
-        return costs;
-    }
+    public int getNumClauses() { return numClauses; }
+    public int[] getCosts() { return costs; }
 
 
     /**
