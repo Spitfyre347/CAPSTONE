@@ -51,7 +51,7 @@ public class solver {
         {
             for (int j=0; j < numVars; j++)
             {
-                clauses[j][i] = (literals[5*i+j] == 0) ? 0 : 1;
+                clauses[j][i] = (literals[numVars*i+j] == 0) ? 0 : 1;
             }   
         }
 
@@ -80,7 +80,7 @@ public class solver {
             //      sum to get "total cost of flip"
             
             minCost = curCost; // for each pass, reset the min cost, and corresponding variable flip
-            minCostFlip = curFlippedVar;
+            minCostFlip = -1;
             for (int i=0; i<numVars; i++)
             {
                 // flip var
@@ -98,26 +98,37 @@ public class solver {
                 vars.flip(i); // flip var back
 
                 // take min to get which flip results in lowest cost
-                minCost = (tempCost <= minCost) ? tempCost : minCost;
-                minCostFlip = (tempCost <= minCost) ? i : minCostFlip;
-            }          
-            // Check if no improvements can be made. Note that this must change later to avoid getting stuck in local maxima/minima  
-            if (minCost >= curCost)
+                if (tempCost <= minCost) 
+                {
+                    minCost = tempCost;
+                    minCostFlip = i;
+                }
+            }       
+            
+            // Check if no improvements made, then with prob 0.2 flip random var and keep going, else quit
+            if (minCostFlip == -1) 
             {
-                break;
+                if (random.nextDouble() < 0.2)
+                {
+                    minCostFlip = random.nextInt(numVars);
+                }
+                else
+                {
+                    break;
+                }
             }
 
             // flip variable and update clauses if it results in an improvement
             vars.flip(minCostFlip);
             curFlippedVar = minCostFlip;
 
-            // recalculate cost of hypothetical scenario
+            // recalculate cost of current scenario
             curCost = 0;
             for (int j=0; j < numClauses; j++)
             {
                 // If the current clause must be checked (i.e. has been affected by a flip), then update cost
-                updatedCosts[j] = (clauses[minCostFlip][j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
-                curCost = curCost + updatedCosts[j];
+                currentCosts[j] = (clauses[minCostFlip][j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
+                curCost = curCost + currentCosts[j];
             }
             t++;
             System.out.println("Current Cost: " + Integer.toString(curCost));
@@ -142,7 +153,7 @@ public class solver {
             }
             // If the literal is 0, don't consider it (no "else" needed)
         }
-        return (sum <= values[clauseToCheck]); //return whether the accumulated sum is leq the related value
+        return (sum >= values[clauseToCheck]); //return whether the accumulated sum is geq the related value
     }    
 
     public static int calcCurrentClauseCost(int clause)
