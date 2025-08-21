@@ -27,6 +27,8 @@ public class CapstoneFileReader {
     public int getNumVars() { return numVariables; }
     public int getNumClauses() { return numClauses; }
     public int[] getCosts() { return costs; }
+    public int[] getLiterals() { return literals; }
+    public int[] getValues() { return values; }
 
 
     /**
