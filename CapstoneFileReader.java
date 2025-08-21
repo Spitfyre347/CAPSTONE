@@ -58,11 +58,6 @@ public class CapstoneFileReader {
             return;
         }
 
-        if (path.contains(".cnf")){
-            lines = cnftowcard(lines);
-            if (debug) System.out.println("Converted CNF to WCard format.");
-        }
-
         // Initialize variables
         boolean initialised = false; // Flag to check if the header line has been processed
         hardCost = -1; // Hard cost for the clauses, as specified in the header line
@@ -288,24 +283,5 @@ public class CapstoneFileReader {
                 "\n\noldClauses = " + Arrays.toString(oldClauses) +
                 "\n\nclauses = " + Arrays.toString(clauses) +
                 "\n}";
-    }
-
-
-    public String[] cnftowcard(String[] lines){
-        String hardcost = "100"; // Default hard cost for WCard format
-        for (int i = 0; i < lines.length; i++){
-            if (lines[i].charAt(0) == 'p'){
-                lines[i] += " " + hardcost; // Append hard cost to the header line
-                if (debug) System.out.println("Header line updated with hard cost: " + lines[i]);
-            }
-            else if (lines[i].charAt(0) == 'c') {
-                // Skip comments
-                continue;
-            } else {
-                lines[i] = hardcost + " " + lines[i]; // Prepend hard cost to each clause
-                if (debug) System.out.println("Clause updated with hard cost: " + lines[i]);
-            }
-        }
-        return lines; // Placeholder for conversion logic
     }
 }
