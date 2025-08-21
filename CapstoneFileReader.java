@@ -54,6 +54,7 @@ public class CapstoneFileReader {
         int hardCost = 0; // Hard cost for the clauses, as specified in the header line
 
         int clauseCounter = 0; // Index for current clause processed
+        int newClauseCounter = 0; // Index for actual clauses processed (including parsing)
         String[] lineHolder = null; // Temporary holder for the split line data
 
         // First, pass through file to determine number of '=' (exact) clauses,
@@ -151,30 +152,31 @@ public class CapstoneFileReader {
                 case ">=":
                     // Format is fine as is
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    clauses[newClauseCounter] = this.arrToStr(lineHolder);
                     break;
                 case "<=":
                     // Convert to >= (standardized format)
-                    
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    String[] conLineHolder = leqtogeq(lineHolder); 
+                    clauses[newClauseCounter] = this.arrToStr(conLineHolder);
                     break;
                 case "=":
                     // If the clause is an exact clause, we need to convert it to two >= clauses
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    String[] geqLineHolder = eqtogeq(lineHolder, false); 
+                    clauses[newClauseCounter] = this.arrToStr(geqLineHolder);
+                    newClauseCounter++;
+                    String[] leqLineHolder = eqtogeq(lineHolder, true); 
+                    clauses[newClauseCounter] = this.arrToStr(leqLineHolder);
                     break;
 
                 default: // We must have that the statement ends in 0 to denote >= 1, or we have an error
                     if (lineHolder[numArgs-1].equals("0")){
-                        System.out.println("Shorthand conversion occuring");
                         // We need to artifically extend our arguments array, and then resolve as normal
                         String[] newLineHolder = new String[numArgs+1];
 
-
-                        System.out.println(arrToStr(lineHolder));
-                        System.out.println(numArgs);
-
                         int i;
                         for (i=0; i < numArgs-1; i++){
-                            System.out.println("Adding " + lineHolder[i]);
                             newLineHolder[i] = lineHolder[i];
                         }
 
@@ -183,6 +185,7 @@ public class CapstoneFileReader {
 
                         System.out.println(arrToStr(newLineHolder));
                         oldClauses[clauseCounter] = this.arrToStr(newLineHolder);
+                        clauses[newClauseCounter] = this.arrToStr(newLineHolder);
                     }
                     else{ // Error: Unexpected clause format
                         System.out.println("Invalid line detected - Clause format not recognized.");
@@ -192,6 +195,7 @@ public class CapstoneFileReader {
                     break;
             }
             clauseCounter++;
+            newClauseCounter++;
         }
 
             /**int literalCounter = 1;
@@ -244,6 +248,8 @@ public class CapstoneFileReader {
 
         System.out.println("Old Clauses:");
         System.out.println(Arrays.toString(oldClauses));
+         System.out.println("Clauses:");
+        System.out.println(Arrays.toString(clauses));
     }
 
     public static void main(String[] args) {
@@ -253,13 +259,28 @@ public class CapstoneFileReader {
 
 
     private String[] leqtogeq (String[] elements){
-        int n = elements.length - 3;
+        int numEl = elements.length;
+        int k = Integer.parseInt(elements[numEl-1]);
+        int n = numEl - 3;
         
-        return null;
+        elements[numEl-1] = String.valueOf(n-k);
+        elements[numEl-2] = ">=";
+
+        for (int i = 1; i < numEl-2; i++){
+            elements[i] = String.valueOf(Integer.parseInt(elements[i]) * (-1));
+        }
+        return elements;
     }
 
-    private String[] eqtogeq (String[] elements){
-        return null;
+    private String[] eqtogeq (String[] elements, boolean extraConver){
+        if (!extraConver) {
+            elements[elements.length-2] = ">=";
+            return elements;
+        }
+        else{
+            elements[elements.length-2] = "<=";
+            return leqtogeq(elements);
+        }
     }
 
     private String arrToStr(String[] in){
