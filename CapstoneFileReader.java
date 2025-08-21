@@ -92,10 +92,12 @@ public class CapstoneFileReader {
                     hardCost = Integer.parseInt(lineHolder[4]);
 
                     // Initialize all arrays
-                    costs = new int[numClauses];
-                    literals = new int[numClauses*numVariables];
+                    costs = new int[numClauses + exactClauseCounter];
+                    literals = new int[(numClauses + exactClauseCounter) * numVariables];
+                    values = new int[numClauses + exactClauseCounter];
+                    
+                    // Need to delete
                     operators = new String[numClauses];
-                    values = new int[numClauses];
 
                     // Testing array
                     oldClauses = new String[numClauses];
@@ -141,9 +143,7 @@ public class CapstoneFileReader {
                 System.out.println("Line: " + line);
                 return;
             }
-
-            // Note clauseCounter is an index (assigned above)
-            costs[clauseCounter] = num;
+            
             
             // We now need to write logic for handling the different type of clauses (<=, >=, =)
 
@@ -153,21 +153,29 @@ public class CapstoneFileReader {
                     // Format is fine as is
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     clauses[newClauseCounter] = this.arrToStr(lineHolder);
+
+                    populateArrays(lineHolder, newClauseCounter, numVariables);
                     break;
                 case "<=":
                     // Convert to >= (standardized format)
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     String[] conLineHolder = leqtogeq(lineHolder); 
                     clauses[newClauseCounter] = this.arrToStr(conLineHolder);
+
+                    populateArrays(conLineHolder, newClauseCounter, numVariables);
                     break;
                 case "=":
                     // If the clause is an exact clause, we need to convert it to two >= clauses
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     String[] geqLineHolder = eqtogeq(lineHolder, false); 
                     clauses[newClauseCounter] = this.arrToStr(geqLineHolder);
+                    populateArrays(geqLineHolder, newClauseCounter, numVariables);
+
                     newClauseCounter++;
                     String[] leqLineHolder = eqtogeq(lineHolder, true); 
                     clauses[newClauseCounter] = this.arrToStr(leqLineHolder);
+                    populateArrays(leqLineHolder, newClauseCounter, numVariables);
+
                     break;
 
                 default: // We must have that the statement ends in 0 to denote >= 1, or we have an error
@@ -183,9 +191,9 @@ public class CapstoneFileReader {
                         newLineHolder[i] = ">=";
                         newLineHolder[i+1] = "1";
 
-                        System.out.println(arrToStr(newLineHolder));
                         oldClauses[clauseCounter] = this.arrToStr(newLineHolder);
                         clauses[newClauseCounter] = this.arrToStr(newLineHolder);
+                        populateArrays(newLineHolder, newClauseCounter, numVariables);
                     }
                     else{ // Error: Unexpected clause format
                         System.out.println("Invalid line detected - Clause format not recognized.");
@@ -248,7 +256,7 @@ public class CapstoneFileReader {
 
         System.out.println("Old Clauses:");
         System.out.println(Arrays.toString(oldClauses));
-         System.out.println("Clauses:");
+        System.out.println("Clauses:");
         System.out.println(Arrays.toString(clauses));
     }
 
@@ -294,5 +302,15 @@ public class CapstoneFileReader {
         out += " (cost = " + in[0] + ") }";
             
         return out;
+    }
+
+    private void populateArrays(String[] in, int index, int vars){
+        System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
+        int len = in.length;
+        costs[index] = Integer.parseInt(in[0]);
+        values[index] = Integer.parseInt(in[len-1]);
+        for (int i = 1; i < len -2 ; i++){
+            literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+        }
     }
 }
