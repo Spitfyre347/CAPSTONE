@@ -4,7 +4,7 @@ import java.util.Random;
 public class solver {
 
     // Max runtime
-    private final static int T = 10000;
+    private final static int T = 1000;
 
     static int numVars;
     static int numClauses;
@@ -40,6 +40,7 @@ public class solver {
             {
                 vars.set(i);
             }
+            System.out.println(vars.get(i)); ///
         }
 
         // Define 2d array to link variables to clauses
@@ -59,8 +60,11 @@ public class solver {
         for (int i=0; i < numClauses; i++)
         {
             currentCosts[i] = calcCurrentClauseCost(i);
+            System.out.println(Integer.toString(currentCosts[i])); /// 
             curCost = curCost + currentCosts[i];
         }
+
+        System.out.println("Initial cost: " + (Integer.toString(curCost))); ///
 
         // Create new int array to store updated costs for each clause
         int[] updatedCosts = new int[numClauses];
@@ -96,8 +100,14 @@ public class solver {
                 // take min to get which flip results in lowest cost
                 minCost = (tempCost <= minCost) ? tempCost : minCost;
                 minCostFlip = (tempCost <= minCost) ? i : minCostFlip;
-            }            
-            // flip variable and update clauses
+            }          
+            // Check if no improvements can be made. Note that this must change later to avoid getting stuck in local maxima/minima  
+            if (minCost >= curCost)
+            {
+                break;
+            }
+
+            // flip variable and update clauses if it results in an improvement
             vars.flip(minCostFlip);
             curFlippedVar = minCostFlip;
 
@@ -109,6 +119,8 @@ public class solver {
                 updatedCosts[j] = (clauses[minCostFlip][j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
                 curCost = curCost + updatedCosts[j];
             }
+            t++;
+            System.out.println("Current Cost: " + Integer.toString(curCost));
         }
     }
 
