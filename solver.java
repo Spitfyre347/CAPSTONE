@@ -4,7 +4,7 @@ import java.util.Random;
 public class solver {
 
     // Max runtime
-    private final static int T = 10000;
+    private final static int T = 1000000;
 
     static int numVars;
     static int numClauses;
@@ -19,7 +19,7 @@ public class solver {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("./samples/aim-50-1_6-no-1.cnf");
+        reader.readFile("test-100-7902.wcard");
 
         // Get data from reader
         numVars = reader.getNumVars();
@@ -40,7 +40,6 @@ public class solver {
             {
                 vars.set(i);
             }
-            System.out.println(vars.get(i)); ///
         }
 
         // Define 2d array to link variables to clauses
@@ -60,7 +59,6 @@ public class solver {
         for (int i=0; i < numClauses; i++)
         {
             currentCosts[i] = calcCurrentClauseCost(i);
-            System.out.println(Integer.toString(currentCosts[i])); /// 
             curCost = curCost + currentCosts[i];
         }
 
@@ -107,9 +105,10 @@ public class solver {
                     minCost = tempCost;
                     minCostFlip = i;
                 }
+                t++;
             }       
             
-            // Check if no improvements made, then with prob 0.2 flip random var and keep going, else quit
+            // Check if no improvements made, then restart with random assignments
             if (minCostFlip == -1) 
             {
                 if (minCost < bestScore)
@@ -146,20 +145,21 @@ public class solver {
                 currentCosts[j] = (clauses[minCostFlip][j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
                 curCost = curCost + currentCosts[j];
             }
-            t++;
+
+            //if (t > T) {break;} // if time is up, end run
         }
 
         System.out.println("Final Best Cost: " + Integer.toString(bestScore));
 
         // Create string output
-        String output = "(";
-        for (int k=0; k < numVars-1; k++)
-        {
-            output = output + ((bestAssignment.get(k)) ? "1" : "0") + ", ";
-        }
-        output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
+        //String output = "(";
+        //for (int k=0; k < numVars-1; k++)
+        //{
+        //    output = output + ((bestAssignment.get(k)) ? "1" : "0") + ", ";
+        //}
+        //output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
 
-        System.out.println("Corresponding Assignment: " + output);
+        //System.out.println("Corresponding Assignment: " + output);
     }
 
     public static boolean checkSAT(int clauseToCheck)
