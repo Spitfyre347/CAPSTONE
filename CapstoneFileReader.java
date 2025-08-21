@@ -152,6 +152,7 @@ public class CapstoneFileReader {
                     break;
                 case "<=":
                     // Convert to >= (standardized format)
+                    
                     oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     break;
                 case "=":
