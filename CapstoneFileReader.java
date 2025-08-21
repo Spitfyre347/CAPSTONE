@@ -1,9 +1,11 @@
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.Arrays;
 
-public class CapstoneFileReader{
+public class CapstoneFileReader {
 
     // Instance variables to hold the parsed data
     // These arrays will be populated with the data read from the file
@@ -11,6 +13,12 @@ public class CapstoneFileReader{
     private int[] literals = null;
     private String[] operators = null;
     private int[] values = null;
+
+    private String[] lines = null; // To hold the lines read from the file
+
+    // Testing array to print out all clauses and their final forms
+    private String[] oldClauses = null;
+    private String[] clauses = null;
 
     int numVariables = 0;
     int numClauses = 0;
@@ -27,133 +35,212 @@ public class CapstoneFileReader{
      *
      * @param path The path to the file to be read.
      */
+
     public void readFile(String path)
     {
-
+        // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
+            // Briefly uses a list object - may need to change
+            lines = Files.readAllLines(Paths.get(path)).toArray(new String[0]);
+        } catch (IOException e){
+            e.printStackTrace();
+            return;
+        }
 
-            boolean initialised = false;
+        // Initialize variables
+        boolean initialised = false; // Flag to check if the header line has been processed
+        int hardCost = 0; // Hard cost for the clauses, as specified in the header line
 
-            String line = "";
-            int clauseCounter = 0;
-            int hardCost = 0;
+        int clauseCounter = 0; // Index for current clause processed
+        String[] lineHolder = null; // Temporary holder for the split line data
 
-            String[] lineHolder = null;
+        // First, pass through file to determine number of '=' (exact) clauses,
+        // and increment a counter to adjust the number of clauses later on
+        int exactClauseCounter = 0;
 
-            while ((line = bReader.readLine()) != null){
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty() || line.charAt(0) == 'c') continue; // Skip comments and blank lines
+            
+            if (line.indexOf(" = ") != -1) {
+                // If the line contains an exact clause, increment the clause counter
+                exactClauseCounter++;
+            }
+        }
 
-                //We make sure that it isn't a blank line
-                line = line.trim();
+        // Now process file normally.
+        for (String line : lines) {
+            // On blank lines/comment lines, skip to next iteration
+            // Note due to short circuiting, if can be checked in this way
+            line = line.trim();
+            if (line.isEmpty() || line.charAt(0) == 'c') continue;
+            
+            // The first thing we look for is the header line. 
+            if (!initialised){
 
-                if(line.isEmpty()) continue;
-
-                //If it's a comment line, we don't care
-                if (line.charAt(0) == 'c'){
-                    //do nothing
-                } 
-                
-                //If it's p, we want to initialise all our values
-                else if(line.charAt(0) == 'p'){
-
-                    //If there has been more than one header line, we stop reading the file
-                    if(initialised){
-                        throw new IllegalStateException("You cannot have more than one header line!");
-                    }
+                // If line begins with p, header line found, so initialize all values
+                if(line.charAt(0) == 'p'){
                     lineHolder = line.split("\\s+");
 
+                    // Adjust number of clauses for input parsing later on
                     numClauses = Integer.parseInt(lineHolder[3]);
+
                     numVariables =Integer.parseInt(lineHolder[2]);
                     hardCost = Integer.parseInt(lineHolder[4]);
 
+                    // Initialize all arrays
                     costs = new int[numClauses];
                     literals = new int[numClauses*numVariables];
                     operators = new String[numClauses];
                     values = new int[numClauses];
 
+                    // Testing array
+                    oldClauses = new String[numClauses];
+                    clauses = new String[numClauses + exactClauseCounter];
+
                     initialised = true;
-
-                } else {
-
-                    lineHolder = line.split("\\s+");
-                    //At this point, the first character is either a cost for a clause, or random garbage
-                    try{
-                        int num = Integer.parseInt(lineHolder[0]);
-                        //Costs may not be negative, so if one is we stop reading the line
-                        if(num < 0){
-                            System.out.println("Invalid line detected - A cost may not be negative");
-                            System.out.println("Line: " + line);
-                            break;
-                        }
-
-                        //Is the clause too short? Not sure how to check if it's too long yet. Hard cost?
-                        if(lineHolder.length < 3){
-                            System.out.println("Invalid line - Line too short, missing information");
-                            System.out.println("Line: " + line);
-                        }
-
-                        costs[clauseCounter] = Integer.parseInt(lineHolder[0]);
-                        
-                        int literalCounter = 1;
-                        int literalNum = Integer.parseInt(lineHolder[literalCounter]);
-                        //Now, we finally have a valid clause. Now, does it have a string operator, or does it end in zero?
-                        try{
-                            int num2 = Integer.parseInt(lineHolder[lineHolder.length-2]);
-                            //It ends in zero (checking this still needs to be added)
-
-                            while(literalNum !=0){
-                                literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
-                                literalCounter++;
-                                literalNum = Integer.parseInt(lineHolder[literalCounter]);
-                            }
-
-                            values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
-                            clauseCounter++;
-
-                        } catch(Exception e){
-                            //It has a string operator in the second last position
-
-                            while (literalCounter < lineHolder.length -2){
-                                literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
-                                literalCounter++;
-
-                                //Temporary workaround (needs attention later)
-                                if(literalCounter == lineHolder.length - 2){
-                                    break;
-                                }
-                                literalNum = Integer.parseInt(lineHolder[literalCounter]);
-                            }
-
-                            operators[clauseCounter] = lineHolder[literalCounter];
-                            values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
-                            clauseCounter++;
-                        }
-                        
-                        
-
-                    //If the line we read starts with something other than p, c, or a cost then we stop reading the file.
-                    } catch (Exception e){
-                        System.out.println("Invalid line detected - Line does not fit format of clause, comment or header");
-                        System.out.println("Line: " + line);
-                        e.printStackTrace();
-                        break;
-                    }
-
                 }
+
+                continue;
             }
 
-            System.out.println("Costs:");
-            System.out.println(Arrays.toString(costs));
-            System.out.println("Literals:");
-            System.out.println(Arrays.toString(literals));
-            System.out.println(literals.length);
-            System.out.println("Operators:");
-            System.out.println(Arrays.toString(operators));
-            System.out.println("Values:");
-            System.out.println(Arrays.toString(values));
+            // If code reaches this point, we've found the header and intialized.
 
-        } catch (IOException e){
-            e.printStackTrace();
+            // As such, if multiple header lines are found, stop reading the file (incorrect format)
+            if(line.charAt(0) == 'p') throw new IllegalStateException("ERROR: Invalid file format. Cannot have more than one header line.");
+         
+            lineHolder = line.split("\\s+");
+            int numArgs = lineHolder.length;
+
+            // At this point, we expect the line to be a clause. We perform several validation checks.
+
+            // Check the clause is not too short.
+            if(numArgs < 3){
+                System.out.println("Invalid line - Line too short, missing information");
+                System.out.println("Line: " + line);
+                return;
+            }
+
+            // Ensure clause begins with an integer (cost)
+            int num;
+            try {
+                num = Integer.parseInt(lineHolder[0]);
+            } catch (Exception e){
+                System.out.println("Invalid line detected - Line does not fit format of clause, comment or header");
+                System.out.println("Line: " + line);
+                e.printStackTrace();
+                return;
+            }
+
+            // Ensure cost is positive
+            if(num < 0){
+                System.out.println("Invalid line detected - A cost may not be negative");
+                System.out.println("Line: " + line);
+                return;
+            }
+
+            // Note clauseCounter is an index (assigned above)
+            costs[clauseCounter] = num;
+            
+            // We now need to write logic for handling the different type of clauses (<=, >=, =)
+
+            // We use a case statement to check against possibilities for the 3 types of clauses
+            switch (lineHolder[numArgs-2]) {
+                case ">=":
+                    // Format is fine as is
+                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    break;
+                case "<=":
+                    // Convert to >= (standardized format)
+                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    break;
+                case "=":
+                    // If the clause is an exact clause, we need to convert it to two >= clauses
+                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
+                    break;
+
+                default: // We must have that the statement ends in 0 to denote >= 1, or we have an error
+                    if (lineHolder[numArgs-1].equals("0")){
+                        System.out.println("Shorthand conversion occuring");
+                        // We need to artifically extend our arguments array, and then resolve as normal
+                        String[] newLineHolder = new String[numArgs+1];
+
+
+                        System.out.println(arrToStr(lineHolder));
+                        System.out.println(numArgs);
+
+                        int i;
+                        for (i=0; i < numArgs-1; i++){
+                            System.out.println("Adding " + lineHolder[i]);
+                            newLineHolder[i] = lineHolder[i];
+                        }
+
+                        newLineHolder[i] = ">=";
+                        newLineHolder[i+1] = "1";
+
+                        System.out.println(arrToStr(newLineHolder));
+                        oldClauses[clauseCounter] = this.arrToStr(newLineHolder);
+                    }
+                    else{ // Error: Unexpected clause format
+                        System.out.println("Invalid line detected - Clause format not recognized.");
+                        System.out.println("Line: " + line);
+                        return;
+                    }
+                    break;
+            }
+            clauseCounter++;
         }
+
+            /**int literalCounter = 1;
+            int literalNum = Integer.parseInt(lineHolder[literalCounter]);
+            
+            //Now, we finally have a valid clause. Now, does it have a string operator, or does it end in zero?
+            try{
+                int num2 = Integer.parseInt(lineHolder[lineHolder.length-2]);
+                //It ends in zero (checking this still needs to be added)
+
+                while(literalNum !=0){
+                    literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
+                    literalCounter++;
+                    literalNum = Integer.parseInt(lineHolder[literalCounter]);
+                }
+
+                values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
+                clauseCounter++;
+
+            } catch(Exception e){
+                //It has a string operator in the second last position
+
+                while (literalCounter < lineHolder.length -2){
+                    literals[(Math.abs(literalNum)-1) + (clauseCounter) * numVariables] = literalNum;
+                    literalCounter++;
+
+                    //Temporary workaround (needs attention later)
+                    if(literalCounter == lineHolder.length - 2){
+                        break;
+                    }
+                    literalNum = Integer.parseInt(lineHolder[literalCounter]);
+                }
+
+                operators[clauseCounter] = lineHolder[literalCounter];
+                values[clauseCounter] = Integer.parseInt(lineHolder[lineHolder.length-1]);
+                clauseCounter++;
+            }
+            
+        }*/
+
+        System.out.println("Costs:");
+        System.out.println(Arrays.toString(costs));
+        System.out.println("Literals:");
+        System.out.println(Arrays.toString(literals));
+        System.out.println(literals.length);
+        System.out.println("Operators:");
+        System.out.println(Arrays.toString(operators));
+        System.out.println("Values:");
+        System.out.println(Arrays.toString(values));
+
+        System.out.println("Old Clauses:");
+        System.out.println(Arrays.toString(oldClauses));
     }
 
     public static void main(String[] args) {
@@ -161,4 +248,27 @@ public class CapstoneFileReader{
         reader.readFile("test.txt");
     }
 
+
+    private String[] leqtogeq (String[] elements){
+        int n = elements.length - 3;
+        
+        return null;
+    }
+
+    private String[] eqtogeq (String[] elements){
+        return null;
+    }
+
+    private String arrToStr(String[] in){
+        String out = "{ ";
+        for (int i = 1; i < in.length; i++)
+        {
+            out = out + in[i];
+            if (i < (in.length-1))
+                out = out + " ";
+        }
+        out += " (cost = " + in[0] + ") }";
+            
+        return out;
+    }
 }
