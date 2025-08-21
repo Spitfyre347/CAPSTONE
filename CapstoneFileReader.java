@@ -7,7 +7,10 @@ import java.util.Arrays;
 
 public class CapstoneFileReader {
 
+    private boolean debug = false; // Debug flag to control debug output
+
     // Instance variables to hold the parsed data
+
     // These arrays will be populated with the data read from the file
     private int[] costs = null;
     private int[] literals = null;
@@ -210,7 +213,7 @@ public class CapstoneFileReader {
             newClauseCounter++;
         }
 
-        System.out.println(this.toString());
+        if (debug) System.out.println(this.toString());
     }
 
     public static void main(String[] args) {
@@ -258,7 +261,7 @@ public class CapstoneFileReader {
     }
 
     private void populateArrays(String[] in, int index, int vars){
-        System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
+        if (debug) System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
         int len = in.length;
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
