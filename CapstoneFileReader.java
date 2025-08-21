@@ -49,17 +49,6 @@ public class CapstoneFileReader {
 
     public void readFile(String path)
     {
-        if (path.contains("txt")){
-            // Call the appropriate method based on file type
-            lines = readTXT(path);
-        }
-        else if (path.contains("cnf")) {
-            // Call the appropriate method based on file type
-            lines = readCNF(path);
-        } else {
-            throw new IllegalArgumentException("Unsupported file format. Please provide a .txt or .cnf file.");
-        }
-
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
             // Briefly uses a list object - may need to change
@@ -67,6 +56,11 @@ public class CapstoneFileReader {
         } catch (IOException e){
             e.printStackTrace();
             return;
+        }
+
+        if (path.contains(".cnf")){
+            lines = cnftowcard(lines);
+            if (debug) System.out.println("Converted CNF to WCard format.");
         }
 
         // Initialize variables
@@ -229,7 +223,7 @@ public class CapstoneFileReader {
 
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test.txt");
+        reader.readFile("dubois20.cnf");
     }
 
 
@@ -280,25 +274,7 @@ public class CapstoneFileReader {
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
         }
     }
-
-    private String[] readTXT (String path){
-        try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
-            // Briefly uses a list object - may need to change
-            return Files.readAllLines(Paths.get(path)).toArray(new String[0]);
-        } catch (IOException e){
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private String[] readCNF (String path){
-        try {
-            return Files.readAllLines(Paths.get(path)).toArray(new String[0]);
-        } catch (IOException e) {
-            e.printStackTrace();
-        return null;
-        }
-    }
+    
 
 
     public String toString(){
@@ -312,5 +288,24 @@ public class CapstoneFileReader {
                 "\n\noldClauses = " + Arrays.toString(oldClauses) +
                 "\n\nclauses = " + Arrays.toString(clauses) +
                 "\n}";
+    }
+
+
+    public String[] cnftowcard(String[] lines){
+        String hardcost = "100"; // Default hard cost for WCard format
+        for (int i = 0; i < lines.length; i++){
+            if (lines[i].charAt(0) == 'p'){
+                lines[i] += " " + hardcost; // Append hard cost to the header line
+                if (debug) System.out.println("Header line updated with hard cost: " + lines[i]);
+            }
+            else if (lines[i].charAt(0) == 'c') {
+                // Skip comments
+                continue;
+            } else {
+                lines[i] = hardcost + " " + lines[i]; // Prepend hard cost to each clause
+                if (debug) System.out.println("Clause updated with hard cost: " + lines[i]);
+            }
+        }
+        return lines; // Placeholder for conversion logic
     }
 }
