@@ -4,7 +4,7 @@ import java.util.Random;
 public class solver {
 
     // Max runtime
-    private final static int T = 1000000;
+    private final static int T = 10000000;
 
     static int numVars;
     static int numClauses;
@@ -19,7 +19,7 @@ public class solver {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test-100-7902.wcard");
+        reader.readFile("test2.txt");
 
         // Get data from reader
         numVars = reader.getNumVars();
@@ -72,7 +72,6 @@ public class solver {
         int[] updatedCosts = new int[numClauses];
         int t = 0;
         int minCost;
-        int curFlippedVar = 0;
         int minCostFlip;
         int tempCost = 0;
         while (true)
@@ -135,7 +134,6 @@ public class solver {
 
             // flip variable and update clauses if it results in an improvement
             vars.flip(minCostFlip);
-            curFlippedVar = minCostFlip;
 
             // recalculate cost of current scenario
             curCost = 0;
