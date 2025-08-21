@@ -5,36 +5,30 @@ import java.util.Arrays;
 
 public class CapstoneFileReader{
 
-    private int[] costs = new int[1];
-    private int[] literals = new int[1];
-    private String[] operators = new String[1];
-    private int[] values = new int[1];
+    // Instance variables to hold the parsed data
+    // These arrays will be populated with the data read from the file
+    private int[] costs = null;
+    private int[] literals = null;
+    private String[] operators = null;
+    private int[] values = null;
 
-    public int[] getCosts()
-    {
-        return costs;
-    }
+    // Getters for the instance variables
+    public int[] getCosts() { return costs; }
+    public int[] getLiterals() { return literals; } 
+    public String[] getOperators() { return operators; }
+    public int[] getValues() { return values; }
 
-    public int[] getLiterals()
-    {
-        return literals;
-    } 
 
-    public String[] getOperators()
-    {
-        return operators;
-    }
-
-    public int[] getValues()
-    {
-        return values;
-    }
-
+    /**
+     * Reads a file and parses its contents into the instance variables.
+     * The file is expected to be in a specific format as described in the comments.
+     *
+     * @param path The path to the file to be read.
+     */
     public void readFile(String path)
     {
-        String filePath = path;
 
-        try (BufferedReader bReader = new BufferedReader(new FileReader(filePath))) {
+        try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
 
             boolean initialised = false;
 
@@ -44,7 +38,7 @@ public class CapstoneFileReader{
             int numVariables = 0;
             int numClauses = 0;
 
-            String[] lineHolder = new String[1];
+            String[] lineHolder = null;
 
             while ((line = bReader.readLine()) != null){
 
@@ -160,6 +154,11 @@ public class CapstoneFileReader{
         } catch (IOException e){
             e.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) {
+        CapstoneFileReader reader = new CapstoneFileReader();
+        reader.readFile("test.txt");
     }
 
 }
