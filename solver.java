@@ -19,7 +19,7 @@ public class solver {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test3.wcard");
+        reader.InitializeClauses("test3.wcard", false);
 
         // Get data from reader
         numVars = reader.getNumVars();
