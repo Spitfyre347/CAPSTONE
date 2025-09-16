@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 public class CapstoneFileReader {
 
-    private boolean debug = false; // Debug flag to control debug output
+    private boolean debug = true; // Debug flag to control debug output
 
     // Instance variables to hold the parsed data
 
@@ -47,7 +47,11 @@ public class CapstoneFileReader {
      * @param path The path to the file to be read.
      */
 
-    public void readFile(String path)
+    public void InitializeClauses(String path, boolean Debug){
+
+    }
+
+    public void readInFile(String path)
     {
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
@@ -214,11 +218,20 @@ public class CapstoneFileReader {
         }
 
         if (debug) System.out.println(this.toString());
+
+        // At this point, all clauses are obtained, we move to sorting/optimizing
+        OptimizeClauses();
+    }
+
+    public void OptimizeClauses(){
+        // We require, for this void, a nonempty array of clauses
+
+       
     }
 
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("dubois20.cnf");
+        reader.readInFile("test.txt");
     }
 
 
@@ -270,8 +283,6 @@ public class CapstoneFileReader {
         }
     }
     
-
-
     public String toString(){
         return "CapstoneFileReader - Parsed Input Results \n-----------------------------------\n" +
                 "numVariables = " + numVariables +
