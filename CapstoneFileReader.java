@@ -239,7 +239,7 @@ public class CapstoneFileReader {
             if (literals[k-1] != 0)
                 clauseLengths[i] += 1;
 
-            if (k % 5 == 0){
+            if (k % numVariables == 0){
                 i++;
             }
         }
@@ -260,10 +260,10 @@ public class CapstoneFileReader {
                     clauseLengths[j + 1] = iTemp;
                     
                     // swap literals
-                    for (int k = 0; k < 5; k++) {
-                        iTemp = literals[j * 5 + k];
-                        literals[j * 5 + k] = literals[(j + 1) * 5 + k];
-                        literals[(j + 1) * 5 + k] = iTemp;
+                    for (int k = 0; k < numVariables; k++) {
+                        iTemp = literals[j * numVariables + k];
+                        literals[j * numVariables + k] = literals[(j + 1) * numVariables + k];
+                        literals[(j + 1) * numVariables + k] = iTemp;
                     }
 
                     // swap costs
@@ -291,10 +291,10 @@ public class CapstoneFileReader {
                 costs[write] = costs[read];
                 values[write] = values[read];
 
-                // Copy 5 literals
-                for (int k = 0; k < 5; k++) {
-                    literals[write * 5 + k] =
-                        literals[read * 5 + k];
+                // Copy literals
+                for (int k = 0; k < numVariables; k++) {
+                    literals[write * numVariables + k] =
+                        literals[read * numVariables + k];
                 }
 
                 write++;
@@ -306,7 +306,7 @@ public class CapstoneFileReader {
         clauseLengths = Arrays.copyOf(clauseLengths, write);
         costs = Arrays.copyOf(costs, write);
         values = Arrays.copyOf(values, write);
-        literals = Arrays.copyOf(literals, write * 5);
+        literals = Arrays.copyOf(literals, write * numVariables);
     }
 
     public static void main(String[] args) {
