@@ -19,7 +19,7 @@ public class solver2 {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readFile("test3.wcard");
+        reader.InitializeClauses("test.txt", false);
 
         // Get data from reader
         numVars = reader.getNumVars();
@@ -46,8 +46,8 @@ public class solver2 {
         }
 
         // Set up make and break scores for each variable
-        int[] makeScores = new int[numVars];
-        int[] breakScores = new int[numVars];
+        long[] makeScores = new long[numVars];
+        long[] breakScores = new long[numVars];
 
         // Define flattened 2d array to link variables to clauses
         int[] clauses = new int[numVars*numClauses];
@@ -61,112 +61,162 @@ public class solver2 {
             }   
         }
 
-        // Calculate floats of initial state
-        int curTotalCost = 0;
+        // Calculate floats and total cost of initial state
+        long curTotalCost = 0;
         for (int i=0; i < numClauses; i++)
         {
             clauseFloats[i] = checkFloat(i);
+            curTotalCost += calcCurrentClauseCost(i);
         }
 
-        // Calculate make and break scores for each variable
-        for (int i=0; i < numVars; i++) // iterate through each variable
+        System.out.println("Initial cost: "+String.valueOf(curTotalCost));
+
+        // Calculate make and break scores for each variable:
+        long bestBreakScore = Long.MAX_VALUE;
+        long bestMakeScore = 0;
+        int bestFlip = -1;
+        int sign = 1;
+        for (int v=0; v < numVars; v++) // iterate through each variable
         {
-            for (int j=0; j < numClauses; j++) // check each clause per variable
+            // Initialise make and break scores
+            breakScores[v] = 0;
+            makeScores[v] = 0;
+
+            for (int c=0; c < numClauses; c++) // check each clause per variable
             {
-                if (clauses[i*numClauses+j] == 1) // only consider clauses that contain the current variable
+                if (clauses[v*numClauses+c] == 1) // only consider clauses that contain the current variable
                 {
-                    if (clauseFloats[j] == 0) {} // increase break count
-                    else if (clauseFloats[j] == -1) {} // increase make count
-                }
-            }
-        }
+                    sign = (literals[c*numVars+v] < 0) ? -1 : 1; // check sign of literal
 
-        System.out.println("Initial cost: " + (Integer.toString(curTotalCost))); ///
-
-        // Record overall best assignment and best score
-        BitSet bestAssignment = new BitSet(numVars);
-        int bestScore = Integer.MAX_VALUE;
-
-        // Create new int array to store updated costs for each clause
-        int[] updatedCosts = new int[numClauses];
-        int t = 0;
-        int minCost;
-        int minCostFlip;
-        int tempCost = 0;
-        while (true)
-        {
-            // for each variable:
-            //      flip, then update cost for affected clauses
-            //      sum to get "total cost of flip"
-            
-            minCost = curTotalCost; // for each pass, reset the min cost, and corresponding variable flip
-            minCostFlip = -1;
-            for (int i=0; i<numVars; i++)
-            {
-                // flip var
-                vars.flip(i);
-                tempCost = 0;
-
-                // recalculate cost of hypothetical scenario
-                for (int j=0; j < numClauses; j++)
-                {
-                    // If the current clause must be checked (i.e. has been affected by a flip), then update cost
-                    updatedCosts[j] = (clauses[i*numClauses+j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
-                    tempCost = tempCost + updatedCosts[j];
-                }
-
-                vars.flip(i); // flip var back
-
-                // take min to get which flip results in lowest cost
-                if (tempCost < minCost) 
-                {
-                    minCost = tempCost;
-                    minCostFlip = i;
-                }
-                t++;
-            }       
-            
-            // Check if no improvements made, then restart with random assignments
-            if (minCostFlip == -1) 
-            {
-                if (minCost < bestScore)
-                {
-                    bestScore = minCost;
-                    bestAssignment = (BitSet)vars.clone();
-                    System.out.println("New Best Cost: " + Integer.toString(bestScore));
-                }
-
-                if (t > T) {break;} // if time is up, end run
-
-                // Assuming time isn't up - restart algorithm with randomly assigned vars
-                for (int i=0; i < numVars; i++)
-                {
-                    // Initiate boolean assignment randomly
-                    if (random.nextInt(2) == 1)
+                    if (clauseFloats[c]==0) // check if break score will increase
                     {
-                        vars.set(i);
+                        if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + clauseCosts[c];} // increase breakscore by cost of clause
+                        else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + clauseCosts[c];}
+                    }
+                    else if (clauseFloats[c]==-1) // check if make score will increase
+                    {
+                        if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + clauseCosts[c];} // increase makescore by cost of clause
+                        else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + clauseCosts[c];}
                     }
                 }
-
-                minCostFlip = random.nextInt(numVars);
             }
-
-            // flip variable and update clauses if it results in an improvement
-            vars.flip(minCostFlip);
-
-            // recalculate cost of current scenario
-            curTotalCost = 0;
-            for (int j=0; j < numClauses; j++)
+            
+            // Keep track of best break score
+            if (breakScores[v] < bestBreakScore) // best is minimum
             {
-                // If the current clause must be checked (i.e. has been affected by a flip), then update cost
-                currentCosts[j] = (clauses[minCostFlip*numClauses+j] == 1) ? calcCurrentClauseCost(j) : currentCosts[j];
-                curTotalCost = curTotalCost + currentCosts[j];
+                bestBreakScore = breakScores[v];
+                bestFlip = v; // our heuristic prioritises break score
+            }
+            else if (breakScores[v] == bestBreakScore) // tiebreaker
+            {
+                if (makeScores[v] > bestMakeScore) // best is maximum
+                {
+                    bestMakeScore = makeScores[v];
+                    bestFlip = v;
+                }
+            }
+            // Keep track of best make score
+            if (makeScores[v] > bestMakeScore) // best is maximum
+            {
+                bestMakeScore = makeScores[v];
             }
 
-            //if (t > T) {break;} // if time is up, end run
+            System.out.println(String.valueOf(v)+" - break score: " + String.valueOf(breakScores[v]));
+            System.out.println(String.valueOf(v)+" - make score: " + String.valueOf(makeScores[v]));
+            System.out.println("Best flip: "+String.valueOf(bestFlip));
         }
 
-        System.out.println("Final Best Cost: " + Integer.toString(bestScore));
+        int t = 0;
+        final double RANDOM_CHANCE = 0.01;
+        while (true)
+        {
+            // Algorithm:
+            // flip:
+            // a) variable with highest breakscore
+            // b) if tied, variable with highest makescore
+            // c) with small chance, random flip
+            // recalculate float for each clause
+            // recalculate break and make scores for each variable
+
+            t++;
+
+            // Small chance for random flip:
+            if (random.nextDouble() < RANDOM_CHANCE) {bestFlip = random.nextInt(numVars);}
+            // Otherwise take greedy flip
+            else {vars.flip(bestFlip);}
+
+            // Recalculate floats
+            for (int i=0; i < numClauses; i++)
+            {
+                clauseFloats[i] = checkFloat(i);
+            }
+
+            // Calculate make and break scores for each variable:
+            bestBreakScore = Long.MAX_VALUE;
+            bestMakeScore = 0;
+            bestFlip = -1;
+            for (int v=0; v < numVars; v++) // iterate through each variable
+            {
+                // Initialise make and break scores
+                breakScores[v] = Long.MAX_VALUE;
+                makeScores[v] = 0;
+
+                for (int c=0; c < numClauses; c++) // check each clause per variable
+                {
+                    if (clauses[v*numClauses+c] == 1) // only consider clauses that contain the current variable
+                    {
+                        sign = (literals[c*numVars+v] < 0) ? -1 : 1; // check sign of literal
+
+                        if (clauseFloats[c]==0) // check if break score will increase
+                        {
+                            if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + clauseCosts[c];} // increase breakscore by cost of clause
+                            else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + clauseCosts[c];}
+                        }
+                        else if (clauseFloats[c]==-1) // check if make score will increase
+                        {
+                            if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + clauseCosts[c];} // increase makescore by cost of clause
+                            else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + clauseCosts[c];}
+                        }
+                    }
+                }
+                
+                // Keep track of best break score
+                if (breakScores[v] < bestBreakScore) // best is minimum
+                {
+                    bestBreakScore = breakScores[v];
+                    bestFlip = v; // our heuristic prioritises break score
+                }
+                else if (breakScores[v] == bestBreakScore) // tiebreaker
+                {
+                    if (makeScores[v] > bestMakeScore) // best is maximum
+                    {
+                        bestMakeScore = makeScores[v];
+                        bestFlip = v;
+                    }
+                }
+                // Keep track of best make score
+                if (makeScores[v] > bestMakeScore) // best is maximum
+                {
+                    bestMakeScore = makeScores[v];
+                }
+            }
+
+            // Calculate and display total cost periodically to check progress
+            if (t % 100000 == 0)
+            {
+                // Calculate cost
+                curTotalCost = 0;
+                for (int c=0; c < numClauses; c++)
+                {
+                    curTotalCost += calcCurrentClauseCost(c);
+                }
+                System.out.println("Clause cost at time " + String.valueOf(t) + ": " + String.valueOf(curTotalCost));
+            }
+            
+            if (t > T) {break;} // if time is up, end run
+        }
+
+        System.out.println("Final Best Cost: " + String.valueOf(curTotalCost));
 
         // Create string output
         //String output = "(";
