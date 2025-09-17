@@ -19,7 +19,7 @@ public class solver2 {
         
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", false);
+        reader.InitializeClauses("test3.wcard", false);
 
         // Get data from reader
         numVars = reader.getNumVars();
@@ -28,9 +28,6 @@ public class solver2 {
         currentCosts = new int[numClauses]; // initialise current cost list
         literals = reader.getLiterals();
         values = reader.getValues();
-
-        // Set up float for each clause
-        int[] clauseFloats = new int[numClauses];
 
         // Boolean variables
         vars = new BitSet(numVars);
@@ -44,6 +41,9 @@ public class solver2 {
                 vars.set(i);
             }
         }
+
+        // Set up float for each clause
+        int[] clauseFloats = new int[numClauses];
 
         // Set up make and break scores for each variable
         long[] makeScores = new long[numVars];
@@ -120,11 +120,10 @@ public class solver2 {
             {
                 bestMakeScore = makeScores[v];
             }
-
-            System.out.println(String.valueOf(v)+" - break score: " + String.valueOf(breakScores[v]));
-            System.out.println(String.valueOf(v)+" - make score: " + String.valueOf(makeScores[v]));
-            System.out.println("Best flip: "+String.valueOf(bestFlip));
         }
+
+        long bestCost = Long.MAX_VALUE;
+        BitSet bestAssignment = new BitSet(numVars);
 
         int t = 0;
         final double RANDOM_CHANCE = 0.01;
@@ -201,22 +200,29 @@ public class solver2 {
                 }
             }
 
-            // Calculate and display total cost periodically to check progress
+            // Calculate current cost
+            curTotalCost = 0;
+            for (int c=0; c < numClauses; c++)
+            {
+                curTotalCost += calcCurrentClauseCost(c);
+            }
+
+            if (curTotalCost < bestCost) // keep track of best cost and assignment
+            {
+                bestCost = curTotalCost;
+                bestAssignment = (BitSet) vars.clone();
+            } 
+
+            // Display total cost periodically to check progress
             if (t % 100000 == 0)
             {
-                // Calculate cost
-                curTotalCost = 0;
-                for (int c=0; c < numClauses; c++)
-                {
-                    curTotalCost += calcCurrentClauseCost(c);
-                }
-                System.out.println("Clause cost at time " + String.valueOf(t) + ": " + String.valueOf(curTotalCost));
+                System.out.println("Best cost at time " + String.valueOf(t) + ": " + String.valueOf(bestCost));
             }
             
             if (t > T) {break;} // if time is up, end run
         }
 
-        System.out.println("Final Best Cost: " + String.valueOf(curTotalCost));
+        System.out.println("Final Best Cost: " + String.valueOf(bestCost));
 
         // Create string output
         //String output = "(";
