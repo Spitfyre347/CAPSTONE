@@ -4,6 +4,7 @@ import java.nio.file.Paths;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.Arrays;
+import java.util.StringJoiner;;
 
 public class CapstoneFileReader {
 
@@ -18,8 +19,7 @@ public class CapstoneFileReader {
 
     private String[] lines = null; // To hold the lines read from the file
 
-    // Testing array to print out all clauses and their final forms
-    private String[] oldClauses = null;
+    // Array of clauses
     private String[] clauses = null;
 
     int numVariables = 0;
@@ -48,10 +48,25 @@ public class CapstoneFileReader {
      */
 
     public void InitializeClauses(String path, boolean Debug){
+        debug = Debug;
+        boolean success = readInFile(path);
 
+        if (!success){
+            System.err.println("Issue encountered during file read. Aborting...");
+            return;
+        }
+
+        if (clauses.length == 0){
+            System.err.println("File read succesfully, though no clauses found. Aborting...");
+            return;
+        }
+
+        System.out.println("Organizing " + clauses.length + " clauses found in order of length");
+
+        OptimizeClauses();
     }
 
-    public void readInFile(String path)
+    public boolean readInFile(String path)
     {
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
@@ -59,20 +74,19 @@ public class CapstoneFileReader {
             lines = Files.readAllLines(Paths.get(path)).toArray(new String[0]);
         } catch (IOException e){
             e.printStackTrace();
-            return;
+            return false;
         }
 
         // Initialize variables
         boolean initialised = false; // Flag to check if the header line has been processed
         hardCost = -1; // Hard cost for the clauses, as specified in the header line
 
-        int clauseCounter = 0; // Index for current clause processed
-        int newClauseCounter = 0; // Index for actual clauses processed (including parsing)
+        int clauseCounter = 0; // Index for actual clauses processed (including parsing)
         String[] lineHolder = null; // Temporary holder for the split line data
 
         // First, pass through file to determine number of '=' (exact) clauses,
         // and increment a counter to adjust the number of clauses later on
-        int exactClauseCounter = 0;
+        int equalsClauseCounter = 0;
 
         for (String line : lines) {
             line = line.trim();
@@ -80,7 +94,7 @@ public class CapstoneFileReader {
             
             if (line.indexOf(" = ") != -1) {
                 // If the line contains an exact clause, increment the clause counter
-                exactClauseCounter++;
+                equalsClauseCounter++;
             }
         }
 
@@ -105,14 +119,11 @@ public class CapstoneFileReader {
                     hardCost = Integer.parseInt(lineHolder[4]);
 
                     // Initialize all arrays
-                    costs = new int[numClauses + exactClauseCounter];
-                    literals = new int[(numClauses + exactClauseCounter) * numVariables];
-                    values = new int[numClauses + exactClauseCounter];
+                    costs = new int[numClauses + equalsClauseCounter];
+                    literals = new int[(numClauses + equalsClauseCounter) * numVariables];
+                    values = new int[numClauses + equalsClauseCounter];
                     
-
-                    // Testing array
-                    oldClauses = new String[numClauses];
-                    clauses = new String[numClauses + exactClauseCounter];
+                    clauses = new String[numClauses + equalsClauseCounter];
 
                     initialised = true;
                 }
@@ -134,7 +145,7 @@ public class CapstoneFileReader {
             if(numArgs < 3){
                 System.out.println("Invalid line - Line too short, missing information");
                 System.out.println("Line: " + line);
-                return;
+                return false;
             }
 
             // Ensure clause begins with an integer (cost)
@@ -145,14 +156,14 @@ public class CapstoneFileReader {
                 System.out.println("Invalid line detected - Line does not fit format of clause, comment or header");
                 System.out.println("Line: " + line);
                 e.printStackTrace();
-                return;
+                return false;
             }
 
             // Ensure cost is positive
             if(num < 0){
                 System.out.println("Invalid line detected - A cost may not be negative");
                 System.out.println("Line: " + line);
-                return;
+                return false;
             }
             
             
@@ -162,30 +173,27 @@ public class CapstoneFileReader {
             switch (lineHolder[numArgs-2]) {
                 case ">=":
                     // Format is fine as is
-                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
-                    clauses[newClauseCounter] = this.arrToStr(lineHolder);
+                    clauses[clauseCounter] = this.arrToStr(lineHolder);
 
-                    populateArrays(lineHolder, newClauseCounter, numVariables);
+                    populateArrays(lineHolder, clauseCounter, numVariables);
                     break;
                 case "<=":
                     // Convert to >= (standardized format)
-                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     String[] conLineHolder = leqtogeq(lineHolder); 
-                    clauses[newClauseCounter] = this.arrToStr(conLineHolder);
+                    clauses[clauseCounter] = this.arrToStr(conLineHolder);
 
-                    populateArrays(conLineHolder, newClauseCounter, numVariables);
+                    populateArrays(conLineHolder, clauseCounter, numVariables);
                     break;
                 case "=":
                     // If the clause is an exact clause, we need to convert it to two >= clauses
-                    oldClauses[clauseCounter] = this.arrToStr(lineHolder);
                     String[] geqLineHolder = eqtogeq(lineHolder, false); 
-                    clauses[newClauseCounter] = this.arrToStr(geqLineHolder);
-                    populateArrays(geqLineHolder, newClauseCounter, numVariables);
+                    clauses[clauseCounter] = this.arrToStr(geqLineHolder);
+                    populateArrays(geqLineHolder, clauseCounter, numVariables);
 
-                    newClauseCounter++;
+                    clauseCounter++;
                     String[] leqLineHolder = eqtogeq(lineHolder, true); 
-                    clauses[newClauseCounter] = this.arrToStr(leqLineHolder);
-                    populateArrays(leqLineHolder, newClauseCounter, numVariables);
+                    clauses[clauseCounter] = this.arrToStr(leqLineHolder);
+                    populateArrays(leqLineHolder, clauseCounter, numVariables);
 
                     break;
 
@@ -202,36 +210,108 @@ public class CapstoneFileReader {
                         newLineHolder[i] = ">=";
                         newLineHolder[i+1] = "1";
 
-                        oldClauses[clauseCounter] = this.arrToStr(newLineHolder);
-                        clauses[newClauseCounter] = this.arrToStr(newLineHolder);
-                        populateArrays(newLineHolder, newClauseCounter, numVariables);
+                        clauses[clauseCounter] = this.arrToStr(newLineHolder);
+                        populateArrays(newLineHolder, clauseCounter, numVariables);
                     }
                     else{ // Error: Unexpected clause format
                         System.out.println("Invalid line detected - Clause format not recognized.");
                         System.out.println("Line: " + line);
-                        return;
+                        return false;
                     }
                     break;
             }
             clauseCounter++;
-            newClauseCounter++;
         }
 
         if (debug) System.out.println(this.toString());
 
-        // At this point, all clauses are obtained, we move to sorting/optimizing
-        OptimizeClauses();
+        // If this point is reached, execution is successful.
+        return true;
     }
 
     public void OptimizeClauses(){
-        // We require, for this void, a nonempty array of clauses
+        // First, clauses are sorted (since this makes the removal of later duplicates faster, O(nlogn) against O(n^2) efficiency).
 
-       
+        // Array for length of each clause created
+        int[] clauseLengths = new int[clauses.length];
+        int i = 0;
+        for (int k = 1; k <= literals.length; k++){
+            if (literals[k-1] != 0)
+                clauseLengths[i] += 1;
+
+            if (k % numVariables == 0){
+                i++;
+            }
+        }
+
+        // Bubble sorts 'costs', 'literals', 'values' (and 'clauses') arrays
+        int n = clauseLengths.length;
+        for (i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - i - 1; j++) {
+                if (clauseLengths[j] > clauseLengths[j + 1]) {
+                    // swap clauses
+                    String sTemp = clauses[j];
+                    clauses[j] = clauses[j+1];
+                    clauses[j+1] = sTemp;
+
+                    // swap clause lengths
+                    int iTemp = clauseLengths[j];
+                    clauseLengths[j] = clauseLengths[j + 1];
+                    clauseLengths[j + 1] = iTemp;
+                    
+                    // swap literals
+                    for (int k = 0; k < numVariables; k++) {
+                        iTemp = literals[j * numVariables + k];
+                        literals[j * numVariables + k] = literals[(j + 1) * numVariables + k];
+                        literals[(j + 1) * numVariables + k] = iTemp;
+                    }
+
+                    // swap costs
+                    iTemp = costs[j];
+                    costs[j] = costs[j + 1];
+                    costs[j + 1] = iTemp;
+
+                    // swap values
+                    iTemp = values[j];
+                    values[j] = values[j + 1];
+                    values[j + 1] = iTemp;
+                }
+            }
+        }
+
+        // now, duplicates (which are known to be adjacent) are removed
+        n = clauses.length;
+        int write = 0; // position to write next unique record
+
+        for (int read = 0; read < n; read++) {
+            if (read == 0 || !clauses[read].equals(clauses[read - 1])) {
+                // Keep this one
+                clauses[write] = clauses[read];
+                clauseLengths[write] = clauseLengths[read];
+                costs[write] = costs[read];
+                values[write] = values[read];
+
+                // Copy literals
+                for (int k = 0; k < numVariables; k++) {
+                    literals[write * numVariables + k] =
+                        literals[read * numVariables + k];
+                }
+
+                write++;
+            }
+        }
+
+        // Trim arrays down to new size
+        clauses = Arrays.copyOf(clauses, write);
+        clauseLengths = Arrays.copyOf(clauseLengths, write);
+        costs = Arrays.copyOf(costs, write);
+        values = Arrays.copyOf(values, write);
+        literals = Arrays.copyOf(literals, write * numVariables);
     }
 
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.readInFile("test.txt");
+        reader.InitializeClauses("test.txt", false);
     }
 
 
@@ -291,7 +371,6 @@ public class CapstoneFileReader {
                 "\n\ncosts = " + Arrays.toString(costs) +
                 "\n\nliterals = " + Arrays.toString(literals) +
                 "\n\nvalues = " + Arrays.toString(values) +
-                "\n\noldClauses = " + Arrays.toString(oldClauses) +
                 "\n\nclauses = " + Arrays.toString(clauses) +
                 "\n}";
     }
