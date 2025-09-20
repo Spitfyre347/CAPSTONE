@@ -3,12 +3,18 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.FileReader;
 import java.io.BufferedReader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.StringJoiner;;
 
 public class CapstoneFileReader {
 
     private boolean debug = true; // Debug flag to control debug output
+
+    // Stopwatch variables
+    private long startTime;
+    private long endTime;
 
     // Instance variables to hold the parsed data
 
@@ -30,9 +36,44 @@ public class CapstoneFileReader {
     public int getNumVars() { return numVariables; }
     public int getNumClauses() { return numClauses; }
     public int[] getCosts() { return costs; }
-    public int[] getLiterals() { return literals; }
-    public int[] getValues() { return values; }
 
+    // Deprecated
+    //public int[] getLiterals() { return literals; }
+    
+    public int[] getLiterals(int index){
+        if (index < 0 || index >= numClauses) {
+            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
+        }
+        
+        int zeroes = 0;
+        int position = 0;
+        if (index != 0){
+            for (int i = 0; i < literals.length; i++){
+                if (literals[i] == 0)
+                {
+                    zeroes++;
+                    if (zeroes == index)
+                    {
+                        position = i + 1;
+                        break;
+                    }
+                }
+            }    
+        }
+        
+        int size = literals.length - position; // default to fill array
+        for (int i = position; i < literals.length; i++){
+            if (literals[i] == 0){
+                size = i - position;
+                break;
+            }
+        }
+
+        return Arrays.copyOfRange(literals, position, position + size);
+        
+    }
+    
+    public int[] getValues() { return values; }
     public int getHardCost() {
         if (hardCost == -1) {
             throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
@@ -40,16 +81,20 @@ public class CapstoneFileReader {
         return hardCost;
     }
 
-    /**
-     * Reads a file and parses its contents into the instance variables.
-     * The file is expected to be in a specific format as described in the comments.
-     *
-     * @param path The path to the file to be read.
-     */
+    private void StartTimer(){
+        startTime = System.currentTimeMillis();
+    }
+
+    private void StopTimer(){
+        endTime = System.currentTimeMillis();
+        long elapsedTime = endTime - startTime;
+        System.out.println("Elapsed time: " + elapsedTime + " ms");
+    }
 
     public void InitializeClauses(String path, boolean Debug){
+        StartTimer();
         debug = Debug;
-        boolean success = readInFile(path);
+        boolean success = ReadInFile(path);
 
         if (!success){
             System.err.println("Issue encountered during file read. Aborting...");
@@ -62,11 +107,18 @@ public class CapstoneFileReader {
         }
 
         System.out.println("Organizing " + clauses.length + " clauses found in order of length");
-
+        
         OptimizeClauses();
+        literals = OptimizeArrayStorage();
+        System.out.println(toString());
+        System.out.println(Arrays.toString(getLiterals(1)));
+        System.out.println(Arrays.toString(getLiterals(2)));
+        System.out.println(Arrays.toString(getLiterals(3)));
+        System.out.println(Arrays.toString(getLiterals(12)));
+        StopTimer();
     }
 
-    public boolean readInFile(String path)
+    private boolean ReadInFile(String path)
     {
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
@@ -229,7 +281,7 @@ public class CapstoneFileReader {
         return true;
     }
 
-    public void OptimizeClauses(){
+    private void OptimizeClauses(){
         // First, clauses are sorted (since this makes the removal of later duplicates faster, O(nlogn) against O(n^2) efficiency).
 
         // Array for length of each clause created
@@ -309,10 +361,37 @@ public class CapstoneFileReader {
         literals = Arrays.copyOf(literals, write * numVariables);
     }
 
-    public static void main(String[] args) {
-        CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", false);
+    // Trim arrays to actual size
+    private int[] OptimizeArrayStorage() {
+        // Count wasted space in original array
+        int zeroCount = 0;
+        for (int literal : literals) {
+            if (literal == 0) {
+                zeroCount++;
+            }
+        }
+
+        // Allocate new array: remove unused zeros, but add 1 per clause for terminators
+        int[] dimacs = new int[literals.length - zeroCount + numClauses];
+        int idx = 0; // pointer for dimacs
+
+        for (int c = 0; c < numClauses; c++) {
+            int start = c * numVariables;
+            int end = start + numVariables;
+
+            // add all nonzero literals in this clause
+            for (int i = start; i < end; i++) {
+                if (literals[i] != 0) {
+                    dimacs[idx++] = literals[i];
+                }
+            }
+            // add clause terminator
+            dimacs[idx++] = 0;
+        }
+
+        return dimacs;
     }
+
 
 
     private String[] leqtogeq (String[] elements){
@@ -373,5 +452,10 @@ public class CapstoneFileReader {
                 "\n\nvalues = " + Arrays.toString(values) +
                 "\n\nclauses = " + Arrays.toString(clauses) +
                 "\n}";
+    }
+
+    public static void main(String[] args) {
+        CapstoneFileReader reader = new CapstoneFileReader();
+        reader.InitializeClauses("test.txt", false);
     }
 }
