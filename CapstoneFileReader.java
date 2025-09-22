@@ -455,4 +455,5 @@ public class CapstoneFileReader {
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("test.txt", false);
     }
+
 }
