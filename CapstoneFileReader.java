@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.BufferedReader;
 import java.util.Arrays;
 
@@ -22,6 +23,8 @@ public class CapstoneFileReader {
     private int[] indices = null;
 
     private int[] softIndices, hardIndices = null; // Separate storage for new indices once optimization complete
+
+    private int[] initialSol = null;
 
     // Array of clauses
     private String[] clauses = null;
@@ -209,6 +212,12 @@ public class CapstoneFileReader {
 
     }
 
+    public int[] getInitialSol(){
+        if (initialSol == null)
+            System.out.println("No initial solution found, solver not initialized.");
+        return initialSol;
+    }
+
     // Deprecated
     //public int[] getLiterals() { return literals; }
     
@@ -248,20 +257,16 @@ public class CapstoneFileReader {
         
         
         // Initial preprocessing complete, proceed to initial solution calcualtions
-        System.out.println(toString());
-        System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
-        System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
-        System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
-        System.out.println("(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
-        System.out.println("(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
-        
-        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
-        System.out.println("Hard Literals: " + Arrays.toString(getHardLiterals()));
-
-        System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
-        System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
+        System.out.println("Arrays optimized, proceeding to intial solution");
 
         StopTimer();
+        if (debug){
+            printAll();
+        }
+
+        writeToFile("Preprocessing_Output.txt");
+
+        initialSol = InitialSolution();
     }
 
 
@@ -556,14 +561,145 @@ public class CapstoneFileReader {
     }
 
 
-    // Find initial solution (greedy)
+    // Find initial solution (greedy), satisfying all hard clauses if possible. 
+    // Returns assignment as int[numVariables] with values 0 or 1.
+    private int[] InitialSolution() {
+        // Arrays for tracking current assignment, and history of flips
+        int[] assign = new int[numVariables];
+        int[] history = new int[numVariables];
 
+        // Random number generator with fixed seed for reproducibility
+        java.util.Random rand = new java.util.Random(12345);
 
+        // To start, set a weight-sensitive greedy initialization
+        long[] oneBenefit = new long[numVariables];
+        long[] zeroBenefit = new long[numVariables];
 
+        // For every clause (soft only), accumulate benefit
+        for (int c = 0; c < numClauses; c++) {
+            if (costs[c] == hardCost) 
+                continue; // skip hard clauses
+
+            int start = indices[c];
+            int end = indices[c + 1];
+            int cost = costs[c];
+
+            for (int k = start; k < end; k++) {
+                int lit = literals[k];
+                int var = Math.abs(lit) - 1; // -1 since benefit arrays are 0-indexed
+                if (lit > 0) 
+                    oneBenefit[var] += cost;
+                else 
+                    zeroBenefit[var] += cost;
+            }
+        }
+
+        // Assign greedily (maximum cost benefit)
+        for (int v = 0; v < numVariables; v++) {
+            assign[v] = (oneBenefit[v] >= zeroBenefit[v]) ? 1 : 0;
+        }
+
+        // Then, repair hard clauses
+        final int MAX_ITERS = numVariables * 50;
+        for (int iter = 0; iter < MAX_ITERS; iter++) {
+            int unsatHard = findUnsatHardClause(assign);
+            if (unsatHard == -1) {
+                // success
+                initialSol = Arrays.copyOf(assign, assign.length);
+                return initialSol;
+            }
+
+            // Try to fix by flipping a variable in that clause
+            int start = indices[unsatHard];
+            int end = indices[unsatHard + 1]; // inclusive
+            int bestVar = -1;
+            int bestNewVal = -1;
+            long bestLoss = Long.MAX_VALUE;
+            int bestHist = Integer.MAX_VALUE;
+
+            for (int k = start; k <= end; k++) {
+                int lit = literals[k];
+                int var = Math.abs(lit) - 1;
+                int targetVal = (lit > 0) ? 1 : 0;
+
+                if (assign[var] == targetVal) continue; // already set correctly, clause still unsat, need others
+
+                // compute soft weight loss if we flip var
+                int oldVal = assign[var];
+                assign[var] = targetVal;
+                long newSoft = softSatisfiedWeight(assign);
+                assign[var] = oldVal;
+                long oldSoft = softSatisfiedWeight(assign);
+                long loss = oldSoft - newSoft;
+
+                if (loss < bestLoss ||
+                    (loss == bestLoss && history[var] < bestHist) ||
+                    (loss == bestLoss && history[var] == bestHist && rand.nextBoolean())) {
+                    bestLoss = loss;
+                    bestVar = var;
+                    bestNewVal = targetVal;
+                    bestHist = history[var];
+                }
+            }
+
+            // apply the chosen flip
+            if (bestVar != -1) {
+                assign[bestVar] = bestNewVal;
+                history[bestVar]++;
+            } else {
+                // if no variable found, flip something random
+                int lit = literals[start + rand.nextInt(end - start + 1)];
+                bestVar = Math.abs(lit) - 1;
+                bestNewVal = (lit > 0) ? 1 : 0;
+                assign[bestVar] = bestNewVal;
+                history[bestVar]++;
+            }
+        }
+
+        // If failed, warn but return best effort
+        System.err.println("Warning: could not satisfy all hard clauses in InitialSolution()");
+        initialSol = Arrays.copyOf(assign, assign.length);
+        return initialSol;
+    }
+
+    // --- Helper: check if a clause is satisfied ---
+    private boolean clauseSatisfied(int c, int[] assign) {
+        int start = indices[c];
+        int end = indices[c + 1]; // inclusive
+        int required = values[c];
+        int count = 0;
+        for (int k = start; k <= end; k++) {
+            int lit = literals[k];
+            int var = Math.abs(lit) - 1;
+            boolean litTrue = (lit > 0) ? (assign[var] == 1) : (assign[var] == 0);
+            if (litTrue) count++;
+            if (count >= required) return true;
+        }
+        return false;
+    }
+
+    // --- Helper: find one unsatisfied hard clause (or -1 if all satisfied) ---
+    private int findUnsatHardClause(int[] assign) {
+        for (int c = 0; c < numClauses; c++) {
+            if (costs[c] == hardCost && !clauseSatisfied(c, assign)) {
+                return c;
+            }
+        }
+        return -1;
+    }
+
+    // --- Helper: total soft weight satisfied by assignment ---
+    private long softSatisfiedWeight(int[] assign) {
+        long sum = 0;
+        for (int c = 0; c < numClauses; c++) {
+            if (costs[c] == hardCost) continue;
+            if (clauseSatisfied(c, assign)) sum += costs[c];
+        }
+        return sum;
+    }
 
 
     // Helper and auxiliary functions
-
     private String getSoftLocs(boolean invert){
         String softInd = "";
 
@@ -600,14 +736,14 @@ public class CapstoneFileReader {
     }
 
     private String arrToStr(String[] in){
-        String out = "{ ";
+        String out = "";
         for (int i = 1; i < in.length; i++)
         {
             out = out + in[i];
             if (i < (in.length-1))
-                out = out + " ";
+                out = out + "";
         }
-        out += " (cost = " + in[0] + ") }";
+        out += " (" +in[0] + ")";
             
         return out;
     }
@@ -623,16 +759,15 @@ public class CapstoneFileReader {
     }
     
     public String toString(){
-        return "CapstoneFileReader - Parsed Input Results \n-----------------------------------\n" +
+        return "CapstoneFileReader - Parsed Input Results \n------------------------------------------\n" +
                 "numVariables = " + numVariables +
-                "\n\nnumClauses = " + numClauses +
-                "\n\nhardCost = " + hardCost +
-                "\n\ncosts = " + Arrays.toString(costs) +
-                "\n\nliterals = " + Arrays.toString(literals) +
-                "\n\nvalues = " + Arrays.toString(values) +
-                "\n\nclauses = " + Arrays.toString(clauses) +
-                "\n\nindices = " + Arrays.toString(indices) +
-                "\n}";
+                "\nnumClauses = " + numClauses +
+                "\nhardCost = " + hardCost +
+                "\ncosts = " + Arrays.toString(costs) +
+                "\nliterals = " + Arrays.toString(literals) +
+                "\nvalues = " + Arrays.toString(values) +
+                "\nindices = " + Arrays.toString(indices) +
+                "\n(clauses = " + Arrays.toString(clauses)+ ")";
     }
 
     private void StartTimer(){
@@ -645,12 +780,53 @@ public class CapstoneFileReader {
         System.out.println("Elapsed time: " + elapsedTime + " ms");
     }
 
+    public void printAll(){
+        System.out.println(toString());
+        System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
+        System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
+        System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
+        System.out.println("(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
+        System.out.println("(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
+        
+        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
+        System.out.println("Hard Literals: " + Arrays.toString(getHardLiterals()));
 
+        System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
+        System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
 
+        System.out.println("Initial Soln: " + Arrays.toString(getInitialSol()));
+    }
+
+    public void writeToFile(String path){
+        FileWriter writer = null;
+        try {
+            writer = new FileWriter(path);
+            writer.write(toString());
+            writer.write("\n\nSoft Costs: " + Arrays.toString(getSoftCosts()));
+            writer.write("\nSoft Values: " + Arrays.toString(getSoftValues()));
+            writer.write("\nHard Values: " + Arrays.toString(getHardValues()));
+            writer.write("\n(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
+            writer.write("\n(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
+            
+            writer.write("\nSoft Literals: " + Arrays.toString(getSoftLiterals()));
+            writer.write("\nHard Literals: " + Arrays.toString(getHardLiterals()));
+
+            writer.write("\nSoft Indices: " + Arrays.toString(getSoftIndices()));
+            writer.write("\nHard Indices: " + Arrays.toString(getHardIndices()));
+            writer.write("\nInitial Soln: " + Arrays.toString(getInitialSol()));
+            writer.write("\n\nElapsed time: " + (endTime - startTime) + " ms");
+            writer.close(); // Always close the writer
+
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
 
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", false);
+        reader.InitializeClauses("test.txt", true);
     }
+
 }
