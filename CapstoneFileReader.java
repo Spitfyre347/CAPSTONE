@@ -71,6 +71,7 @@ public class CapstoneFileReader {
     }
     
     public int[] getValues() { return values; }
+
     public int getHardCost() {
         if (hardCost == -1) {
             throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
@@ -388,8 +389,6 @@ public class CapstoneFileReader {
 
         return dimacs;
     }
-
-
 
     private String[] leqtogeq (String[] elements){
         int numEl = elements.length;
