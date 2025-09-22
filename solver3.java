@@ -7,14 +7,22 @@ public class solver3 {
     private final static int T = 10000000;
 
     // Variables
-    static int numVars;
-    static int numClauses;
-    static int[] clauseCosts;
-    static int[] currentCosts;
-    static int[] literals;
-    static int[] values;
-    static BitSet vars;
+    static BitSet vars; // BitSet to keep track of boolean variables
+    static int numVars; // number of literals
 
+    static int numSoft; // number of soft clauses
+    static int numHard; // number of hard clauses
+    static int[] softCosts; // soft clause costs
+    static int[] unsat; // unSAT soft clauses
+    static int[] dynamicCosts; // weighted soft clause costs
+    static int[] softValues; // k-values for soft clauses
+    static int[] hardValues; // k-values for hard clauses
+
+    public static void setup()
+    {
+
+    }
+    
     public static void main(String[] args) 
     {
         Random random = new Random();
@@ -23,119 +31,67 @@ public class solver3 {
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("test.txt", false);
 
-        // Get data from reader
-        numVars = reader.getNumVars();
-        numClauses = reader.getNumClauses();
-        clauseCosts = reader.getCosts();
-        values = reader.getValues();
-
         // Boolean variables
         vars = new BitSet(numVars);
 
-        // Set up boolean assignment
-        for (int i=0; i < numVars; i++)
-        {
-            // Initiate boolean assignment randomly
-            if (random.nextInt(2) == 1)
-            {
-                vars.set(i);
-            }
-        }
+        // Create an array for dynamic soft clause costs
+        dynamicCosts = new int[numSoft];
 
-        // Set up float for each clause
-        int[] clauseFloats = new int[numClauses];
+        // Get initial boolean assignment from preprocessing
+        // All hard clauses are SAT
 
         // Set up make and break scores for each variable
         long[] makeScores = new long[numVars];
         long[] breakScores = new long[numVars];
 
-        // Define flattened 2d array to link variables to clauses
-        int[] clauses = new int[numVars*numClauses];
-
         // Link variables to clauses
-        for (int i=0; i < numClauses; i++)
-        {
-            for (int j=0; j < numVars; j++)
-            {
-                clauses[j*numClauses + i] = (literals[numVars*i+j] == 0) ? 0 : 1;
-            }   
-        }
 
-        // Calculate floats and total cost of initial state
+        // Calculate total cost of initial state
         long curTotalCost = 0;
-        for (int i=0; i < numClauses; i++)
+        for (int i=0; i < numSoft; i++)
         {
-            clauseFloats[i] = checkFloat(i);
             curTotalCost += calcCurrentClauseCost(i);
         }
 
         System.out.println("Initial cost: "+String.valueOf(curTotalCost));
-
-        // Calculate make and break scores for each variable:
-        long bestBreakScore = Long.MAX_VALUE;
-        long bestMakeScore = 0;
-        int bestFlip = -1;
-        int sign = 1;
-        for (int v=0; v < numVars; v++) // iterate through each variable
-        {
-            // Initialise make and break scores
-            breakScores[v] = 0;
-            makeScores[v] = 0;
-
-            for (int c=0; c < numClauses; c++) // check each clause per variable
-            {
-                if (clauses[v*numClauses+c] == 1) // only consider clauses that contain the current variable
-                {
-                    sign = (literals[c*numVars+v] < 0) ? -1 : 1; // check sign of literal
-
-                    if (clauseFloats[c]==0) // check if break score will increase
-                    {
-                        if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + clauseCosts[c];} // increase breakscore by cost of clause
-                        else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + clauseCosts[c];}
-                    }
-                    else if (clauseFloats[c]==-1) // check if make score will increase
-                    {
-                        if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + clauseCosts[c];} // increase makescore by cost of clause
-                        else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + clauseCosts[c];}
-                    }
-                }
-            }
-            
-            // Keep track of best break score
-            if (breakScores[v] < bestBreakScore) // best is minimum
-            {
-                bestBreakScore = breakScores[v];
-                bestFlip = v; // our heuristic prioritises break score
-            }
-            else if (breakScores[v] == bestBreakScore) // tiebreaker
-            {
-                if (makeScores[v] > bestMakeScore) // best is maximum
-                {
-                    bestMakeScore = makeScores[v];
-                    bestFlip = v;
-                }
-            }
-            // Keep track of best make score
-            if (makeScores[v] > bestMakeScore) // best is maximum
-            {
-                bestMakeScore = makeScores[v];
-            }
-        }
 
         long bestCost = Long.MAX_VALUE;
         BitSet bestAssignment = new BitSet(numVars);
 
         int t = 0;
         final double RANDOM_CHANCE = 0.01;
+        int curClause = -1;
         while (true)
         {
             // Algorithm:
+            // calculate cost and update best assignment
+            // pick unsat soft clause, with prob weighted by dynamic cost
+            // calculate break and make costs for variables in clause
+            // outlaw any flips that violate hard clauses
             // flip:
-            // a) variable with highest breakscore
-            // b) if tied, variable with highest makescore
-            // c) with small chance, random flip
-            // recalculate float for each clause
-            // recalculate break and make scores for each variable
+            // a) variable with highest score: make - break
+            // b) with small chance, random flip
+
+            // Calculate total cost of state
+            curTotalCost = 0;
+            for (int i=0; i < numSoft; i++) // only iterate over soft clauses, as we enforce hard cost = 0
+            {
+                curTotalCost += calcCurrentClauseCost(i);
+            }
+
+            if (curTotalCost < bestCost)
+            {
+                bestCost = curTotalCost;
+                bestAssignment = (BitSet)vars.clone();
+                System.out.println("New Best Cost: " + Long.toString(bestCost));
+            }
+
+            // Pick unsat soft clause with weighted probability:
+            curClause = pickClause(unsat, random);
+
+            // Iterate through variables in curClause
+            for (int v=0; )
+
 
             t++;
 
@@ -153,6 +109,25 @@ public class solver3 {
         //output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
 
         //System.out.println("Corresponding Assignment: " + output);
+    }
+
+    public static int pickClause(int[] unsat, Random random)
+    {
+        // Use the Acceptance-Rejection algorithm to sample from the weighted distribution of unSAT clauses
+        int totalCost = 0;
+        int[] costs = new int[unsat.length];
+        for (int c=0; c < unsat.length; c++)
+        {
+            costs[c] = dynamicCosts[unsat[c]]; // get relevant weighted costs
+            totalCost += costs[c]; // calculate sum of costs to normalize prob.
+        }
+
+        int unif = 0;
+        while (true) 
+        {
+            unif = random.nextInt(unsat.length); // Uniformly draw from clauses
+            if (random.nextDouble() < costs[unif] / totalCost) {return unsat[unif];} // Accept with prob cost/total_cost
+        }
     }
 
     public static boolean checkSAT(int clauseToCheck)
