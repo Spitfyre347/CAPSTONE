@@ -27,13 +27,6 @@ public class solver3 {
 
     public static void setup()
     {
-
-    }
-    
-    public static void main(String[] args) 
-    {
-        Random random = new Random();
-        
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("test.txt", false);
