@@ -29,6 +29,44 @@ public class solver3 {
     {
 
     }
+
+    public int[] returnClause(boolean soft, int index){
+        int[] softLits=null, softInds=null;
+        int[] hardLits=null, hardInds=null;
+        // idk where u assign these, don't think you've pushed to git, but just replace these with ur actual ones.
+        
+        int[] outArr;
+        int size=0;
+
+        if (soft){
+            if (index < softInds.length-1)
+                size = softInds[index+1] - softInds[index];
+            else if (index == softInds.length -1) 
+                size = (softLits.length) - softInds[index];
+            else
+                throw new IndexOutOfBoundsException();
+             
+            outArr = new int[size];
+            for (int i = 0; i < size; i++){
+                outArr[i] = softLits[softInds[index]+i];
+            }
+            return outArr;
+        }
+        else{ // returning a hard clause
+            if (index < hardInds.length-1)
+                size = hardInds[index+1] - hardInds[index];
+            else if (index == hardInds.length -1) 
+                size = (hardLits.length) - hardInds[index];
+            else
+                throw new IndexOutOfBoundsException();
+             
+            outArr = new int[size];
+            for (int i = 0; i < size; i++){
+                outArr[i] = hardLits[hardInds[index]+i];
+            }
+            return outArr;
+        }
+    } 
     
     public static void main(String[] args) 
     {
