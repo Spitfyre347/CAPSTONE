@@ -116,38 +116,73 @@ public class CapstoneFileReader {
         return hardInds; 
     }
     
-    public int[] getSoftLiterals(int index){
-        if (index < 0 || index >= numClauses) {
-            throw new IndexOutOfBoundsException("Index out of bounds: " + index);
-        }
+    public int[] getSoftLiterals(){
+        int[] softLits;
+
+        // Find locations where soft clauses appear in array
+        String softLoc = getSoftLocs(false);
         
-        int zeroes = 0;
-        int position = 0;
-        if (index != 0){
-            for (int i = 0; i < literals.length; i++){
-                if (literals[i] == 0)
-                {
-                    zeroes++;
-                    if (zeroes == index)
-                    {
-                        position = i + 1;
-                        break;
-                    }
-                }
-            }    
-        }
+        int size = 0;
+        int ind = 0;
+        int[] sizes = new int[softLoc.length()];
         
-        int size = literals.length - position; // default to fill array
-        for (int i = position; i < literals.length; i++){
-            if (literals[i] == 0){
-                size = i - position;
-                break;
-            }
+        // Calculate size for soft literals array, and work out size of each clause
+        for (char c : softLoc.toCharArray()){   
+            sizes[ind] = indices[c - '0' + 1] - indices[c - '0'];
+            size += sizes[ind]; // for explanation see getSoftCosts()
+            ind++;
         }
 
-        return Arrays.copyOfRange(literals, position, position + size);
-        
+        softLits = new int[size];
+
+        ind = 0; // Reuse indice variable
+        int outerInd = 0;
+        int[] inds = getSoftIndices();
+
+        for (int i : inds){
+            for (int j = 0; j < sizes[outerInd]; j++){
+                softLits[ind] = literals[i + j];
+                ind++;
+            }
+            outerInd++;
+        }
+        return softLits; 
     }
+
+    public int[] getHardLiterals(){
+         int[] hardLits;
+
+        // Find locations where soft clauses appear in array
+        String softLoc = getSoftLocs(true);
+        
+        int size = 0;
+        int ind = 0;
+        int[] sizes = new int[softLoc.length()];
+        
+        // Calculate size for soft literals array, and work out size of each clause
+        for (char c : softLoc.toCharArray()){   
+            sizes[ind] = indices[c - '0' + 1] - indices[c - '0'];
+            size += sizes[ind]; // for explanation see getSoftCosts()
+            ind++;
+        }
+
+        hardLits = new int[size];
+
+        ind = 0; // Reuse indice variable
+        int outerInd = 0;
+        int[] inds = getHardIndices();
+
+        for (int i : inds){
+            for (int j = 0; j < sizes[outerInd]; j++){
+                hardLits[ind] = literals[i + j];
+                ind++;
+            }
+            outerInd++;
+        }
+        return hardLits; 
+    }
+
+    
 
     // Deprecated
     //public int[] getLiterals() { return literals; }
@@ -194,6 +229,8 @@ public class CapstoneFileReader {
         System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
         System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
         System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
+        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
+        System.out.println("Hard Indices: " + Arrays.toString(getHardLiterals()));
 
         StopTimer();
     }
@@ -482,6 +519,8 @@ public class CapstoneFileReader {
                     newliterals[idx++] = literals[i];
                 }
             }
+
+            indices[ind] = idx-1;
         }
 
         return newliterals;
