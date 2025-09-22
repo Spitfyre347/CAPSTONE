@@ -22,21 +22,25 @@ public class CapstoneFileReader {
     private int[] values = null;
     private int[] indices = null;
 
-    private int[] softIndices, hardIndices = null; // Separate storage for new indices once optimization complete
+    private int[] softIndices = null, hardIndices = null; // Separate storage for new indices once optimization complete
+
+    private int[][] hardBulkyArr;
+    private int[][] softBulkyArr;
+    private int[] softClauses = null, hardClauses = null;
+    private int[] softClauseInds = null, hardClauseInds = null;
 
     private int[] initialSol = null;
 
     // Array of clauses
     private String[] clauses = null;
 
-    // Integer trackers
+    // Integer trackers (SOME DEPRECATED)
     private int numVariables = 0;
     private int numClauses = 0;
     private int hardCost = -1;
 
     // Getters for the instance variables
     public int getNumVars() { return numVariables; }
-    public int getNumClauses() { return numClauses; }
 
     public int[] getSoftCosts() {
         int[] softCosts;
@@ -132,7 +136,7 @@ public class CapstoneFileReader {
         int[] sizes = new int[softLoc.length()];
 
         // Will also populate softIndices during this method
-        softIndices = new int[softLoc.length()];
+        softIndices = new int[softLoc.length()+1];
         
         // Calculate size for soft literals array, and work out size of each clause
         for (char c : softLoc.toCharArray()){   
@@ -155,6 +159,9 @@ public class CapstoneFileReader {
             }
             outerInd++;
         }
+
+        softIndices[softIndices.length-1] = softLits.length;
+        
         return softLits; 
     }
 
@@ -169,7 +176,7 @@ public class CapstoneFileReader {
         int[] sizes = new int[softLoc.length()];
 
         // Will also populate softIndices during this method
-        hardIndices = new int[softLoc.length()];
+        hardIndices = new int[softLoc.length()+1];
         
         // Calculate size for soft literals array, and work out size of each clause
         for (char c : softLoc.toCharArray()){   
@@ -192,6 +199,9 @@ public class CapstoneFileReader {
             }
             outerInd++;
         }
+
+        hardIndices[hardIndices.length-1] = hardLits.length;
+
         return hardLits; 
     }
 
@@ -212,6 +222,21 @@ public class CapstoneFileReader {
 
     }
 
+    public int[] getSoftClauses(){ return softClauses; }
+    public int[] getHardClauses(){ return hardClauses; }
+    public int[] getSoftClauseIndices(){ return hardClauseInds; }
+    public int[] getHardClauseIndices(){ return hardClauseInds; }
+
+
+    public int getHardCost() {
+        if (hardCost == -1) {
+            throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
+        }
+        return hardCost;
+    }
+
+
+
     public int[] getInitialSol(){
         if (initialSol == null)
             System.out.println("No initial solution found, solver not initialized.");
@@ -221,12 +246,7 @@ public class CapstoneFileReader {
     // Deprecated
     //public int[] getLiterals() { return literals; }
     
-    public int getHardCost() {
-        if (hardCost == -1) {
-            throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
-        }
-        return hardCost;
-    }
+    
 
     public void InitializeClauses(String path, boolean Debug){
         StartTimer();
@@ -255,13 +275,21 @@ public class CapstoneFileReader {
         indices = new int[numClauses+1]; // +1 to store end of last clause
         literals = OptimizeArrayStorage();
         
+        // Calculate and populate clause and clause index arrays
+        softClauseInds = new int[numVariables+1];
+        hardClauseInds = new int[numVariables+1];
+        softClauses = new int[getSoftLiterals().length];
+        hardClauses = new int[getHardLiterals().length];
+        softBulkyArr = PopulateClauseArrays(softClauseInds, softClauses, true);
+        hardBulkyArr = PopulateClauseArrays(hardClauseInds, hardClauses, false);
         
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
         StopTimer();
+
         if (debug){
-            printAll();
+            System.out.println(toString());
         }
 
         writeToFile("Preprocessing_Output.txt");
@@ -432,8 +460,6 @@ public class CapstoneFileReader {
             clauseCounter++;
         }
 
-        if (debug) System.out.println(this.toString());
-
         // If this point is reached, execution is successful.
         return true;
     }
@@ -558,6 +584,70 @@ public class CapstoneFileReader {
         }
 
         return newliterals;
+    }
+
+    private int[][] PopulateClauseArrays(int[] indArr, int[] clauseArr, boolean soft){
+        // Compute list of clauses for each variable as well as a corresponding index array
+        int[] literals;
+        int[] indices;
+
+        if (soft)
+        {
+            literals = getSoftLiterals();
+            indices = getSoftIndices();
+        }   
+        else 
+        {
+            literals = getHardLiterals();
+            indices = getHardIndices();
+        }
+        int[][] bulkyArr = new int[numVariables][indices.length-1]; // Initial 2D array to populate all clauses for all vars, which will be flattened later on
+            
+
+        // Actual incredible code which looks to be written by an absolute genius
+        int ind = 0;
+        for (int i = 0; i < literals.length; i++){
+            bulkyArr[Math.abs(literals[i])-1][ind] = ind+1;
+            if ((ind < indices.length-1) && (i == (indices[ind+1]-1))) // new clause reached
+                ind++;
+        }
+        /*|─────────────────────────────────|
+          |🏆  CODE AWARD OF EXCELLENCE 🏆 |
+          |─────────────────────────────────|
+          | ✨ For writing truly spec- ✨  |
+          |          tacular code!          |
+          |─────────────────────────────────|*/
+
+
+        // now we write logic to flatten this 2d array into a 1d array, and to populate our indices
+        
+        int pos = 0;
+        for (int i = 0; i < bulkyArr.length; i++) {
+            indArr[i] = pos;  // mark start index
+            for (int j = 0; j < bulkyArr[i].length; j++) {
+                if (bulkyArr[i][j] != 0) {
+                    clauseArr[pos] = bulkyArr[i][j];
+                    pos++;
+                }
+            }
+        }
+        indArr[indArr.length-1]= clauseArr.length;
+
+        // Print results
+        System.out.println(Arrays.deepToString(bulkyArr));
+
+        System.out.println("Flattened:");
+        for (int v : clauseArr) {
+            System.out.print(v + " ");
+        }
+        System.out.println();
+        System.out.println("Indices:");
+        for (int idx : indArr) {
+            System.out.print(idx + " ");
+        }
+        System.out.println();
+
+        return bulkyArr;
     }
 
 
@@ -699,7 +789,20 @@ public class CapstoneFileReader {
     }
 
 
+
+
+
     // Helper and auxiliary functions
+    public boolean isAllZeros(int[] arr) {
+        for (int val : arr) {
+            if (val != 0) {
+                return false; // found non-zero
+            }
+        }
+        return true; // all were zeros
+    }
+
+
     private String getSoftLocs(boolean invert){
         String softInd = "";
 
@@ -767,7 +870,24 @@ public class CapstoneFileReader {
                 "\nliterals = " + Arrays.toString(literals) +
                 "\nvalues = " + Arrays.toString(values) +
                 "\nindices = " + Arrays.toString(indices) +
-                "\n(clauses = " + Arrays.toString(clauses)+ ")";
+                "\n(clauses = " + Arrays.toString(clauses)+ ")" +
+                "\n\nSoft Costs: " + Arrays.toString(getSoftCosts()) + 
+                "\nSoft Values: " + Arrays.toString(getSoftValues()) +
+                "\nHard Values: " + Arrays.toString(getHardValues()) +
+                "\n(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")" +
+                "\n(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")" +
+                "\nSoft Literals: " + Arrays.toString(getSoftLiterals()) +
+                "\nHard Literals: " + Arrays.toString(getHardLiterals()) +
+                "\nSoft Indices: " + Arrays.toString(getSoftIndices()) +
+                "\nHard Indices: " + Arrays.toString(getHardIndices()) +
+                "\n\nRaw Soft Clauses Array: " + Arrays.deepToString(softBulkyArr) +
+                "\nSoft Clauses by Var: " + Arrays.toString(getSoftClauses()) +
+                "\nSoft Clause Indices by Var: " + Arrays.toString(getSoftClauseIndices()) +
+                "\nRaw Hard Clauses Array: " + Arrays.deepToString(hardBulkyArr) +
+                "\nHard Clauses by Var: " + Arrays.toString(getHardClauses()) +
+                "\nHard Clause Indices by Var: " + Arrays.toString(getHardClauseIndices()) +
+                "\n\nInitial Soln: " + Arrays.toString(getInitialSol()) +
+                "\n\nElapsed time: " + (endTime - startTime) + " ms";
     }
 
     private void StartTimer(){
@@ -779,42 +899,13 @@ public class CapstoneFileReader {
         long elapsedTime = endTime - startTime;
         System.out.println("Elapsed time: " + elapsedTime + " ms");
     }
-
-    public void printAll(){
-        System.out.println(toString());
-        System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
-        System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
-        System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
-        System.out.println("(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
-        System.out.println("(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
-        
-        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
-        System.out.println("Hard Literals: " + Arrays.toString(getHardLiterals()));
-
-        System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
-        System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
-
-        System.out.println("Initial Soln: " + Arrays.toString(getInitialSol()));
-    }
+    
 
     public void writeToFile(String path){
         FileWriter writer = null;
         try {
             writer = new FileWriter(path);
             writer.write(toString());
-            writer.write("\n\nSoft Costs: " + Arrays.toString(getSoftCosts()));
-            writer.write("\nSoft Values: " + Arrays.toString(getSoftValues()));
-            writer.write("\nHard Values: " + Arrays.toString(getHardValues()));
-            writer.write("\n(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
-            writer.write("\n(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
-            
-            writer.write("\nSoft Literals: " + Arrays.toString(getSoftLiterals()));
-            writer.write("\nHard Literals: " + Arrays.toString(getHardLiterals()));
-
-            writer.write("\nSoft Indices: " + Arrays.toString(getSoftIndices()));
-            writer.write("\nHard Indices: " + Arrays.toString(getHardIndices()));
-            writer.write("\nInitial Soln: " + Arrays.toString(getInitialSol()));
-            writer.write("\n\nElapsed time: " + (endTime - startTime) + " ms");
             writer.close(); // Always close the writer
 
         } catch (IOException e) {
