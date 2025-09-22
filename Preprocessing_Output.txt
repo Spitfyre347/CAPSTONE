@@ -20,4 +20,4 @@ Soft Indices: [0, 2, 5, 8, 12]
 Hard Indices: [0]
 Initial Soln: null
 
-Elapsed time: 61 ms
+Elapsed time: 108 ms
