@@ -222,12 +222,19 @@ public class CapstoneFileReader {
 
     }
 
+    public int[] getSoftClauses(){ return softClauses; }
+    public int[] getHardClauses(){ return hardClauses; }
+    public int[] getSoftClauseIndices(){ return hardClauseInds; }
+    public int[] getHardClauseIndices(){ return hardClauseInds; }
+
+
     public int getHardCost() {
         if (hardCost == -1) {
             throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
         }
         return hardCost;
     }
+
 
 
     public int[] getInitialSol(){
@@ -874,11 +881,11 @@ public class CapstoneFileReader {
                 "\nSoft Indices: " + Arrays.toString(getSoftIndices()) +
                 "\nHard Indices: " + Arrays.toString(getHardIndices()) +
                 "\n\nRaw Soft Clauses Array: " + Arrays.deepToString(softBulkyArr) +
-                "\nSoft Clauses by Var: " + Arrays.toString(softClauses) +
-                "\nSoft Clause Indices by Var: " + Arrays.toString(softClauseInds) +
+                "\nSoft Clauses by Var: " + Arrays.toString(getSoftClauses()) +
+                "\nSoft Clause Indices by Var: " + Arrays.toString(getSoftClauseIndices()) +
                 "\nRaw Hard Clauses Array: " + Arrays.deepToString(hardBulkyArr) +
-                "\nHard Clauses by Var: " + Arrays.toString(hardClauses) +
-                "\nHard Clause Indices by Var: " + Arrays.toString(hardClauseInds) +
+                "\nHard Clauses by Var: " + Arrays.toString(getHardClauses()) +
+                "\nHard Clause Indices by Var: " + Arrays.toString(getHardClauseIndices()) +
                 "\n\nInitial Soln: " + Arrays.toString(getInitialSol()) +
                 "\n\nElapsed time: " + (endTime - startTime) + " ms";
     }
