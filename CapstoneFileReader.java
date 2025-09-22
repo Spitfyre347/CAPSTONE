@@ -19,25 +19,104 @@ public class CapstoneFileReader {
     private int[] costs = null;
     private int[] literals = null;
     private int[] values = null;
-
-    private String[] lines = null; // To hold the lines read from the file
+    private int[] indices = null;
 
     // Array of clauses
     private String[] clauses = null;
 
-    int numVariables = 0;
-    int numClauses = 0;
-    int hardCost = -1;
+    // Integer trackers
+    private int numVariables = 0;
+    private int numClauses = 0;
+    private int hardCost = -1;
 
     // Getters for the instance variables
     public int getNumVars() { return numVariables; }
     public int getNumClauses() { return numClauses; }
-    public int[] getCosts() { return costs; }
 
-    // Deprecated
-    //public int[] getLiterals() { return literals; }
+    public int[] getSoftCosts() {
+        int[] softCosts;
+
+        // Find locations where soft clauses appear in array
+        String softInd = getSoftLocs(false);
+
+        softCosts = new int[softInd.length()];
+        int ind = 0;
+
+        // Extract soft costs
+        for (char c : softInd.toCharArray()){
+            softCosts[ind++] = costs[c - '0']; // subtracting '0' gives the integer value of this character
+        }
+
+        return softCosts; 
+    }
     
-    public int[] getLiterals(int index){
+    public int[] getSoftValues() { 
+        int[] softVals;
+
+        // Find locations where soft clauses appear in array
+        String softInd = getSoftLocs(false);
+
+        softVals = new int[softInd.length()];
+        int ind = 0;
+
+        // Extract soft values
+        for (char c : softInd.toCharArray()){
+            softVals[ind++] = values[c - '0']; // for explanation see getSoftCosts()
+        }
+
+        return softVals; 
+    }
+    public int[] getHardValues() { 
+        int[] hardVals;
+
+        // Find locations where soft clauses appear in array
+        String hardInd = getSoftLocs(true);
+
+        hardVals = new int[hardInd.length()];
+        int ind = 0;
+
+        // Extract soft values
+        for (char c : hardInd.toCharArray()){
+            hardVals[ind++] = values[c - '0']; // for explanation see getSoftCosts()
+        }
+
+        return hardVals; 
+    }
+    
+    public int[] getSoftIndices() { 
+        int[] softInds;
+
+        // Find locations where soft clauses appear in array
+        String softLoc = getSoftLocs(false);
+
+        softInds = new int[softLoc.length()];
+        int ind = 0;
+
+        // Extract soft indices
+        for (char c : softLoc.toCharArray()){
+            softInds[ind++] = indices[c - '0']; // for explanation see getSoftCosts()
+        }
+
+        return softInds; 
+    }
+    public int[] getHardIndices() { 
+        int[] hardInds;
+
+        // Find locations where soft clauses appear in array
+        String hardLoc = getSoftLocs(true);
+
+        hardInds = new int[hardLoc.length()];
+        int ind = 0;
+
+        // Extract hard indices
+        for (char c : hardLoc.toCharArray()){
+            hardInds[ind++] = indices[c - '0']; // for explanation see getSoftCosts()
+        }
+
+        return hardInds; 
+    }
+    
+    public int[] getSoftLiterals(int index){
         if (index < 0 || index >= numClauses) {
             throw new IndexOutOfBoundsException("Index out of bounds: " + index);
         }
@@ -69,9 +148,10 @@ public class CapstoneFileReader {
         return Arrays.copyOfRange(literals, position, position + size);
         
     }
-    
-    public int[] getValues() { return values; }
 
+    // Deprecated
+    //public int[] getLiterals() { return literals; }
+    
     public int getHardCost() {
         if (hardCost == -1) {
             throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
@@ -79,19 +159,11 @@ public class CapstoneFileReader {
         return hardCost;
     }
 
-    private void StartTimer(){
-        startTime = System.currentTimeMillis();
-    }
-
-    private void StopTimer(){
-        endTime = System.currentTimeMillis();
-        long elapsedTime = endTime - startTime;
-        System.out.println("Elapsed time: " + elapsedTime + " ms");
-    }
-
     public void InitializeClauses(String path, boolean Debug){
         StartTimer();
         debug = Debug;
+
+        // Reads in file
         boolean success = ReadInFile(path);
 
         if (!success){
@@ -104,20 +176,36 @@ public class CapstoneFileReader {
             return;
         }
 
-        System.out.println("Organizing " + clauses.length + " clauses found in order of length");
+        // File read successfully, proceed to optimization
+        System.out.println("Found " + clauses.length + " clauses, beginning preprocessing");
         
+        // Sort clauses by length, and remove duplicates
         OptimizeClauses();
+
+        // Trim literals array to reduced EOF size, AND populate indices array
+        indices = new int[numClauses+1]; // +1 to store end of last clause
         literals = OptimizeArrayStorage();
+        
+        
+        // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println(toString());
-        System.out.println(Arrays.toString(getLiterals(1)));
-        System.out.println(Arrays.toString(getLiterals(2)));
-        System.out.println(Arrays.toString(getLiterals(3)));
-        System.out.println(Arrays.toString(getLiterals(12)));
+        System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
+        System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
+        System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
+        System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
+        System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
+
         StopTimer();
     }
 
+
+
+
+
+    // Initial arrayization, file reading and input validation
     private boolean ReadInFile(String path)
     {
+        String[] lines = null;
         // Check file exists; break if no file found
         try (BufferedReader bReader = new BufferedReader(new FileReader(path))) {
             // Briefly uses a list object - may need to change
@@ -279,6 +367,11 @@ public class CapstoneFileReader {
         return true;
     }
 
+
+
+
+
+    // Remove duplicate clauses, and sort clauses by length
     private void OptimizeClauses(){
         // First, clauses are sorted (since this makes the removal of later duplicates faster, O(nlogn) against O(n^2) efficiency).
 
@@ -361,6 +454,7 @@ public class CapstoneFileReader {
 
     // Trim arrays to actual size
     private int[] OptimizeArrayStorage() {
+
         // Count wasted space in original array
         int zeroCount = 0;
         for (int literal : literals) {
@@ -369,25 +463,47 @@ public class CapstoneFileReader {
             }
         }
 
-        // Allocate new array: remove unused zeros, but add 1 per clause for terminators
-        int[] dimacs = new int[literals.length - zeroCount + numClauses];
-        int idx = 0; // pointer for dimacs
+        // Allocate new array to remove unused zeros, and populate indices array
+        int[] newliterals = new int[literals.length - zeroCount];
+        int idx = 0; // pointer for new array
+        int ind = 0; // pointer for indices array
 
         for (int c = 0; c < numClauses; c++) {
             int start = c * numVariables;
             int end = start + numVariables;
 
-            // add all nonzero literals in this clause
+            // Stores start of clause in indices array
+            indices[ind++] = idx;
+
+            // Add all nonzero literals in this clause
             for (int i = start; i < end; i++) {
+
                 if (literals[i] != 0) {
-                    dimacs[idx++] = literals[i];
+                    newliterals[idx++] = literals[i];
                 }
             }
-            // add clause terminator
-            dimacs[idx++] = 0;
         }
 
-        return dimacs;
+        return newliterals;
+    }
+
+
+    // Find initial solution (greedy)
+
+
+
+
+
+    // Helper and auxiliary functions
+
+    private String getSoftLocs(boolean invert){
+        String softInd = "";
+
+        for (int i = 0; i < costs.length; i++)
+            if ((costs[i] == hardCost) == invert)
+                softInd += String.valueOf(i);
+                
+        return softInd;
     }
 
     private String[] leqtogeq (String[] elements){
@@ -447,12 +563,26 @@ public class CapstoneFileReader {
                 "\n\nliterals = " + Arrays.toString(literals) +
                 "\n\nvalues = " + Arrays.toString(values) +
                 "\n\nclauses = " + Arrays.toString(clauses) +
+                "\n\nindices = " + Arrays.toString(indices) +
                 "\n}";
     }
 
+    private void StartTimer(){
+        startTime = System.currentTimeMillis();
+    }
+
+    private void StopTimer(){
+        endTime = System.currentTimeMillis();
+        long elapsedTime = endTime - startTime;
+        System.out.println("Elapsed time: " + elapsedTime + " ms");
+    }
+
+
+
+
+    // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("test.txt", false);
     }
-
 }
