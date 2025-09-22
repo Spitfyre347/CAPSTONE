@@ -21,6 +21,8 @@ public class CapstoneFileReader {
     private int[] values = null;
     private int[] indices = null;
 
+    private int[] softIndices, hardIndices = null; // Separate storage for new indices once optimization complete
+
     // Array of clauses
     private String[] clauses = null;
 
@@ -83,7 +85,7 @@ public class CapstoneFileReader {
         return hardVals; 
     }
     
-    public int[] getSoftIndices() { 
+    public int[] getOuterSoftIndices() { 
         int[] softInds;
 
         // Find locations where soft clauses appear in array
@@ -99,7 +101,7 @@ public class CapstoneFileReader {
 
         return softInds; 
     }
-    public int[] getHardIndices() { 
+    public int[] getOuterHardIndices() { 
         int[] hardInds;
 
         // Find locations where soft clauses appear in array
@@ -125,6 +127,9 @@ public class CapstoneFileReader {
         int size = 0;
         int ind = 0;
         int[] sizes = new int[softLoc.length()];
+
+        // Will also populate softIndices during this method
+        softIndices = new int[softLoc.length()];
         
         // Calculate size for soft literals array, and work out size of each clause
         for (char c : softLoc.toCharArray()){   
@@ -137,9 +142,10 @@ public class CapstoneFileReader {
 
         ind = 0; // Reuse indice variable
         int outerInd = 0;
-        int[] inds = getSoftIndices();
+        int[] inds = getOuterSoftIndices();
 
         for (int i : inds){
+            softIndices[outerInd] = ind;
             for (int j = 0; j < sizes[outerInd]; j++){
                 softLits[ind] = literals[i + j];
                 ind++;
@@ -158,6 +164,9 @@ public class CapstoneFileReader {
         int size = 0;
         int ind = 0;
         int[] sizes = new int[softLoc.length()];
+
+        // Will also populate softIndices during this method
+        hardIndices = new int[softLoc.length()];
         
         // Calculate size for soft literals array, and work out size of each clause
         for (char c : softLoc.toCharArray()){   
@@ -170,9 +179,10 @@ public class CapstoneFileReader {
 
         ind = 0; // Reuse indice variable
         int outerInd = 0;
-        int[] inds = getHardIndices();
+        int[] inds = getOuterHardIndices();
 
         for (int i : inds){
+            hardIndices[outerInd] = ind;
             for (int j = 0; j < sizes[outerInd]; j++){
                 hardLits[ind] = literals[i + j];
                 ind++;
@@ -182,7 +192,22 @@ public class CapstoneFileReader {
         return hardLits; 
     }
 
-    
+    public int[] getSoftIndices(){
+        if (softIndices == null)
+            System.out.println("Error: Must cause getSoftLiterals() first before this method");
+
+        return softIndices;
+        
+    }
+
+    public int[] getHardIndices(){
+        if (softIndices == null)
+            System.out.println("Error: Must cause getHardLiterals() first before this method");
+        
+        return hardIndices;
+
+
+    }
 
     // Deprecated
     //public int[] getLiterals() { return literals; }
@@ -227,10 +252,14 @@ public class CapstoneFileReader {
         System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
         System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
         System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
+        System.out.println("(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
+        System.out.println("(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
+        
+        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
+        System.out.println("Hard Literals: " + Arrays.toString(getHardLiterals()));
+
         System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
         System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
-        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
-        System.out.println("Hard Indices: " + Arrays.toString(getHardLiterals()));
 
         StopTimer();
     }
