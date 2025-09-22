@@ -17,6 +17,11 @@ public class solver3 {
     static int[] dynamicCosts; // weighted soft clause costs
     static int[] softValues; // k-values for soft clauses
     static int[] hardValues; // k-values for hard clauses
+
+    public static void setup()
+    {
+
+    }
     
     public static void main(String[] args) 
     {
@@ -84,6 +89,8 @@ public class solver3 {
             // Pick unsat soft clause with weighted probability:
             curClause = pickClause(unsat, random);
 
+            // Iterate through variables in curClause
+            for (int v=0; )
 
 
             t++;
@@ -119,7 +126,7 @@ public class solver3 {
         while (true) 
         {
             unif = random.nextInt(unsat.length); // Uniformly draw from clauses
-            if (random.nextDouble() < costs[unif] / totalCost) {return unif;} // Accept with prob cost/total_cost
+            if (random.nextDouble() < costs[unif] / totalCost) {return unsat[unif];} // Accept with prob cost/total_cost
         }
     }
 
