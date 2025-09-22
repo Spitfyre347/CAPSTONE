@@ -14,9 +14,9 @@ public class solver3 {
     static int numSoft; // number of soft clauses
     static int numHard; // number of hard clauses
     static int hardCost; // cost of hard clause
-    static int[] softIndices; // indices used to locate a specific soft clause in softLiterals 
+    static int[] softIndices; // indices used to locate literals in a specific soft clause in softLiterals 
     static int[] softLiterals; // soft clauses expressed ito their literals
-    static int[] hardIndices; // indices used to locate a specific hard clause in hardLiterals 
+    static int[] hardIndices; // indices used to locate literals in a specific hard clause in hardLiterals 
     static int[] hardLiterals; // hard clauses expressed ito their literals
     static int[] softCosts; // soft clause costs
     static int[] softFloats; // floats for each soft clause
@@ -26,6 +26,10 @@ public class solver3 {
     static int[] dynamicCosts; // weighted soft clause costs
     static int[] softValues; // k-values for soft clauses
     static int[] hardValues; // k-values for hard clauses
+    static int[] softClauseIndices; // indices to locate soft clauses containing a specific variable
+    static int[] softClauses; // variables expressed ito the soft clauses they are found in
+    static int[] hardClauseIndices; // indices to locate hard clauses containing a specific variable
+    static int[] hardClauses; // variables expressed ito the hard clauses they are found in
 
     public static void setup()
     {
@@ -40,11 +44,15 @@ public class solver3 {
         softLiterals = reader.getSoftLiterals();
         softCosts = reader.getSoftCosts();
         softValues = reader.getSoftValues();
+        softClauseIndices = reader.getSoftClauseIndices();
+        softClauses = reader.getSoftClauses();
 
         hardIndices = reader.getHardIndices();
         hardLiterals = reader.getHardLiterals();
         hardValues = reader.getHardValues();
         hardCost = reader.getHardCost();
+        hardClauseIndices = reader.getHardClauseIndices();
+        hardClauses = reader.getHardClauses();
 
         // Quick calculations to initialise other variables
         dynamicCosts = softCosts.clone(); // array for dynamic soft costs
@@ -175,18 +183,15 @@ public class solver3 {
                 skip = false;
                 bestFlip = random.nextInt(numVars);
                 // Check hard clauses
-                for (int c=0; c < numClauses; c++) // check each clause per variable
+                for (int i=hardClauseIndices[bestFlip]; i < hardClauseIndices[bestFlip+1]; i++)
                 {
-                    if (clauses[bestFlip*numClauses+c] == 1) // only consider clauses that contain the current variable
-                    {
-                        sign = (literals[c*numVars+bestFlip] < 0) ? -1 : 1; // check sign of literal
+                    sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
 
-                        // If a hard clause will get broken, ensure this variable isn't picked
-                        if (hardFloats[c]==0)
-                        {
-                            if (vars.get(bestFlip) && sign==1) {skip = true; break;}
-                            else if (!vars.get(bestFlip) && sign==-1) {skip = true; break;}
-                        }
+                    // If a hard clause will get broken, ensure this variable isn't picked
+                    if (hardFloats[hardClauses[i]*sign]==0)
+                    {
+                        if (vars.get(bestFlip) && sign==1) {skip = true; break;}
+                        else if (!vars.get(bestFlip) && sign==-1) {skip = true; break;}
                     }
                 }
 
@@ -213,48 +218,38 @@ public class solver3 {
                 for (int i = start; i < end; i++)
                 {
                     v = softLiterals[i];
-                    for (int c = ; c < ; c++)
-                    {
-                        
-                    }
 
                     // Initialise make and break scores for v
                     breakScores[v] = 0;
                     makeScores[v] = 0;
 
                     // Run for soft clauses
-                    for (int c=0; c < numClauses; c++) // check each clause per variable
+                    for (int j=softClauseIndices[v]; j < softClauseIndices[v+1]; j++) // check each soft clause affected by literal v
                     {
-                        if (clauses[v*numClauses+c] == 1) // only consider clauses that contain the current variable
-                        {
-                            sign = (literals[c*numVars+v] < 0) ? -1 : 1; // check sign of literal
+                        sign = (softClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
 
-                            if (softFloats[c]==0) // check if break score will increase
-                            {
-                                if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + softCosts[c];} // increase breakscore by cost of clause
-                                else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + softCosts[c];}
-                            }
-                            else if (softFloats[c]==-1) // check if make score will increase
-                            {
-                                if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + softCosts[c];} // increase makescore by cost of clause
-                                else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + softCosts[c];}
-                            }
+                        if (softFloats[softClauses[j]*sign]==0) // check if break score will increase
+                        {
+                            if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + softCosts[softClauses[j]*sign];} // increase breakscore by cost of clause
+                            else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + softCosts[softClauses[j]*sign];}
+                        }
+                        else if (softFloats[softClauses[j]*sign]==-1) // check if make score will increase
+                        {
+                            if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + softCosts[softClauses[j]*sign];} // increase makescore by cost of clause
+                            else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + softCosts[softClauses[j]*sign];}
                         }
                     }
                     
                     // Check hard clauses
-                    for (int c=0; c < numClauses; c++) // check each clause per variable
+                    for (int j=hardClauseIndices[v]; j < hardClauseIndices[v+1]; j++) // check each hard clause affected by literal v
                     {
-                        if (clauses[v*numClauses+c] == 1) // only consider clauses that contain the current variable
-                        {
-                            sign = (literals[c*numVars+v] < 0) ? -1 : 1; // check sign of literal
+                        sign = (hardClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
 
-                            // If a hard clause will get broken, ensure this variable isn't picked by making score the min
-                            if (hardFloats[c]==0)
-                            {
-                                if (vars.get(v) && sign==1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
-                                else if (!vars.get(v) && sign==-1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
-                            }
+                        // If a hard clause will get broken, ensure this variable isn't picked by making score the min
+                        if (hardFloats[hardClauses[j]*sign]==0)
+                        {
+                            if (vars.get(v) && sign==1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
+                            else if (!vars.get(v) && sign==-1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
                         }
                     }
                     
