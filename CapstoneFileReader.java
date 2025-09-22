@@ -607,7 +607,7 @@ public class CapstoneFileReader {
         // Actual incredible code which looks to be written by an absolute genius
         int ind = 0;
         for (int i = 0; i < literals.length; i++){
-            bulkyArr[Math.abs(literals[i])-1][ind] = ind+1;
+            bulkyArr[Math.abs(literals[i])-1][ind] = (ind+1) * (literals[i] / Math.abs(literals[i])); // add clause index, with sign
             if ((ind < indices.length-1) && (i == (indices[ind+1]-1))) // new clause reached
                 ind++;
         }
