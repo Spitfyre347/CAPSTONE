@@ -12,7 +12,14 @@ public class solver3 {
 
     static int numSoft; // number of soft clauses
     static int numHard; // number of hard clauses
+    static int hardCost; // cost of hard clause
+    static int[] softIndices; // indices used to locate a specific soft clause in softLiterals 
+    static int[] softLiterals; // soft clauses expressed ito their literals
+    static int[] hardIndices; // indices used to locate a specific hard clause in hardLiterals 
+    static int[] hardLiterals; // hard clauses expressed ito their literals
     static int[] softCosts; // soft clause costs
+    static int[] softFloats; // floats for each soft clause
+    static int[] hardFloats; // floats for each hard clause
     static int[] unsat; // unSAT soft clauses
     static int[] dynamicCosts; // weighted soft clause costs
     static int[] softValues; // k-values for soft clauses
@@ -20,37 +27,60 @@ public class solver3 {
 
     public static void setup()
     {
-
-    }
-    
-    public static void main(String[] args) 
-    {
-        Random random = new Random();
-        
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("test.txt", false);
 
-        // Boolean variables
-        vars = new BitSet(numVars);
+        // Read variables directly from File Reader
+        numVars = reader.getNumVars();
 
-        // Create an array for dynamic soft clause costs
-        dynamicCosts = new int[numSoft];
+        softIndices = reader.getSoftIndices();
+        softLiterals = reader.getSoftLiterals();
+        softCosts = reader.getSoftCosts();
+        softValues = reader.getSoftValues();
+
+        hardIndices = reader.getHardIndices();
+        hardLiterals = reader.getHardLiterals();
+        hardValues = reader.getHardValues();
+        hardCost = reader.getHardCost();
+
+        // Quick calculations to initialise other variables
+        dynamicCosts = softCosts.clone(); // array for dynamic soft costs
+        numSoft = softValues.length;
+        numHard = hardValues.length;
+
+        // Create Boolean variables
+        vars = new BitSet(numVars);
 
         // Get initial boolean assignment from preprocessing
         // All hard clauses are SAT
 
-        // Set up make and break scores for each variable
-        long[] makeScores = new long[numVars];
-        long[] breakScores = new long[numVars];
-
         // Link variables to clauses
+    }
+    
+    public static void main(String[] args) 
+    {
+        setup();
 
-        // Calculate total cost of initial state
+        Random random = new Random();
+
+        // Calculate total cost of initial state and check which clauses are SAT
         long curTotalCost = 0;
-        for (int i=0; i < numSoft; i++)
+        unsat = new int[numSoft];
+        int index = 0;
+        boolean sat = true;
+        for (int c=0; c < numSoft; c++)
         {
-            curTotalCost += calcCurrentClauseCost(i);
+            // if current clause is unSAT, add to array
+            sat = checkSAT(c);
+            if (!sat)
+            {
+                unsat[index] = c; 
+                index++;
+            }
+
+            // Add to total cost if not SAT
+            curTotalCost += (sat) ? 0 : softCosts[c]; 
         }
 
         System.out.println("Initial cost: "+String.valueOf(curTotalCost));
@@ -58,9 +88,16 @@ public class solver3 {
         long bestCost = Long.MAX_VALUE;
         BitSet bestAssignment = new BitSet(numVars);
 
+        // Set up make and break scores for each variable
+        long[] makeScores;
+        long[] breakScores;
+
+        // Main loop:
         int t = 0;
+        int v = 0;
         final double RANDOM_CHANCE = 0.01;
         int curClause = -1;
+        int start, end;
         while (true)
         {
             // Algorithm:
@@ -72,13 +109,26 @@ public class solver3 {
             // a) variable with highest score: make - break
             // b) with small chance, random flip
 
-            // Calculate total cost of state
+            // Calculate total cost of state and update unsat array
             curTotalCost = 0;
-            for (int i=0; i < numSoft; i++) // only iterate over soft clauses, as we enforce hard cost = 0
+            unsat = new int[numSoft];
+            index = 0;
+            sat = true;
+            for (int c=0; c < numSoft; c++)
             {
-                curTotalCost += calcCurrentClauseCost(i);
+                // if current clause is unSAT, add to array
+                sat = checkSAT(c);
+                if (!sat)
+                {
+                    unsat[index] = c; 
+                    index++;
+                }
+
+                // Add to total cost if not SAT
+                curTotalCost += (sat) ? 0 : softCosts[c]; 
             }
 
+            // If current assignment is the best so far, save it
             if (curTotalCost < bestCost)
             {
                 bestCost = curTotalCost;
@@ -89,8 +139,22 @@ public class solver3 {
             // Pick unsat soft clause with weighted probability:
             curClause = pickClause(unsat, random);
 
-            // Iterate through variables in curClause
-            for (int v=0; )
+            // Get literals involved in selected clause:
+            start = softIndices[curClause];
+            end = softIndices[curClause+1];
+            makeScores = new long[end-start];
+            breakScores = new long[end-start];
+
+            // Calculate make and break scores for each literal in selected clause
+            for (int i = start; i < end; i++)
+            {
+                v = softLiterals[i];
+                vars.flip(v); // flip v for now and see what breaks
+                for (int c = ; c < ; c++)
+                {
+                    
+                }
+            }
 
 
             t++;
@@ -130,30 +194,100 @@ public class solver3 {
         }
     }
 
-    public static boolean checkSAT(int clauseToCheck)
+    public static int checkFloat(int clauseToCheck, boolean hard)
     {
         int sum = 0;
-        // Loop over each variable that could occur in clause (all vars)
-        for (int i=0; i < numVars; i++)
+
+        if (hard)
         {
-            // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
-            if (literals[numVars*clauseToCheck+i] > 0)
+            // Loop over each variable that could occur in clause
+            for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
             {
-                sum = sum + ((vars.get(i)) ? 1 : 0);
+                // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
+                if (hardLiterals[i] > 0)
+                {
+                    sum = sum + ((vars.get(i)) ? 1 : 0);
+                }
+                // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
+                else if (hardLiterals[i] < 0)
+                {
+                    sum = sum + ((vars.get(i)) ? 0 : 1);
+                }
+                // If the literal is 0, don't consider it (no "else" needed)
             }
-            // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
-            else if (literals[numVars*clauseToCheck+i] < 0)
-            {
-                sum = sum + ((vars.get(i)) ? 0 : 1);
-            }
-            // If the literal is 0, don't consider it (no "else" needed)
+            return (sum - hardValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
-        return (sum >= values[clauseToCheck]); //return whether the accumulated sum is geq the related value
+        else
+        {
+            // Loop over each variable that could occur in clause
+            for (int i=softIndices[clauseToCheck]; i < softIndices[clauseToCheck+1]; i++)
+            {
+                // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
+                if (softLiterals[i] > 0)
+                {
+                    sum = sum + ((vars.get(i)) ? 1 : 0);
+                }
+                // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
+                else if (softLiterals[i] < 0)
+                {
+                    sum = sum + ((vars.get(i)) ? 0 : 1);
+                }
+                // If the literal is 0, don't consider it (no "else" needed)
+            }
+            return (sum - softValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
+        }
+        
+    }
+
+    public static boolean checkSAT(int clauseToCheck, boolean hard)
+    {
+        int sum = 0;
+
+        if (hard)
+        {
+            // Loop over each variable that could occur in clause (all vars)
+            for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
+            {
+                // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
+                if (hardLiterals[i] > 0)
+                {
+                    sum = sum + ((vars.get(hardLiterals[i])) ? 1 : 0);
+                }
+                // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
+                else if (hardLiterals[i] < 0)
+                {
+                    sum = sum + ((vars.get(hardLiterals[i])) ? 0 : 1);
+                }
+                // If the literal is 0, don't consider it (no "else" needed)
+            }
+            return (sum >= hardValues[clauseToCheck]); //return whether the accumulated sum is geq the related value
+        }
+        else
+        {
+            // Loop over each variable that could occur in clause (all vars)
+            for (int i=softIndices[clauseToCheck]; i < softIndices[clauseToCheck+1]; i++)
+            {
+                // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
+                if (softLiterals[i] > 0)
+                {
+                    sum = sum + ((vars.get(softLiterals[i])) ? 1 : 0);
+                }
+                // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
+                else if (softLiterals[i] < 0)
+                {
+                    sum = sum + ((vars.get(softLiterals[i])) ? 0 : 1);
+                }
+                // If the literal is 0, don't consider it (no "else" needed)
+            }
+            return (sum >= softValues[clauseToCheck]); //return whether the accumulated sum is geq the related value
+        }
     }    
 
-    public static int calcCurrentClauseCost(int clause)
+    public static int calcCurrentClauseCost(int clause, boolean hard)
     {   
         // If clause is satisfied, cost is 0, otherwise return associated cost
-        return (checkSAT(clause)) ? 0 : clauseCosts[clause];
+        if (hard) {return (checkSAT(clause, true)) ? 0 : hardCost;}
+        else {return (checkSAT(clause, false)) ? 0 : softCosts[clause];}
+        
     }
 }
