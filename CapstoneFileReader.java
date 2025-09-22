@@ -85,7 +85,7 @@ public class CapstoneFileReader {
         return hardVals; 
     }
     
-    public int[] getOuterSoftIndices() { 
+    private int[] getOuterSoftIndices() { 
         int[] softInds;
 
         // Find locations where soft clauses appear in array
@@ -101,7 +101,7 @@ public class CapstoneFileReader {
 
         return softInds; 
     }
-    public int[] getOuterHardIndices() { 
+    private int[] getOuterHardIndices() { 
         int[] hardInds;
 
         // Find locations where soft clauses appear in array
