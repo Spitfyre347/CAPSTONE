@@ -166,20 +166,20 @@ public class CapstoneFileReader {
     }
 
     public int[] getHardLiterals(){
-         int[] hardLits;
+        int[] hardLits;
 
         // Find locations where soft clauses appear in array
-        String softLoc = getSoftLocs(true);
+        String hardLoc = getSoftLocs(true);
         
         int size = 0;
         int ind = 0;
-        int[] sizes = new int[softLoc.length()];
+        int[] sizes = new int[hardLoc.length()];
 
         // Will also populate softIndices during this method
-        hardIndices = new int[softLoc.length()+1];
+        hardIndices = new int[hardLoc.length()+1];
         
         // Calculate size for soft literals array, and work out size of each clause
-        for (char c : softLoc.toCharArray()){   
+        for (char c : hardLoc.toCharArray()){   
             sizes[ind] = indices[c - '0' + 1] - indices[c - '0'];
             size += sizes[ind]; // for explanation see getSoftCosts()
             ind++;
@@ -574,15 +574,12 @@ public class CapstoneFileReader {
 
             // Add all nonzero literals in this clause
             for (int i = start; i < end; i++) {
-
-                if (literals[i] != 0) {
+                if (literals[i] != 0) 
                     newliterals[idx++] = literals[i];
-                }
-            }
-
-            indices[ind] = idx-1;
+            }    
         }
-
+        
+        indices[ind] = idx;
         return newliterals;
     }
 
@@ -615,7 +612,7 @@ public class CapstoneFileReader {
           |🏆  CODE AWARD OF EXCELLENCE 🏆 |
           |─────────────────────────────────|
           | ✨ For writing truly spec- ✨  |
-          |          tacular code!          | THAT DOESN'T WORK!!!!!!!
+          |          tacular code!          | 
           |─────────────────────────────────|*/
 
 
@@ -625,8 +622,12 @@ public class CapstoneFileReader {
         for (int i = 0; i < bulkyArr.length; i++) {
             indArr[i] = pos;  // mark start index
             for (int j = 0; j < bulkyArr[i].length; j++) {
-                if (bulkyArr[i][j] != 0) {
-                    clauseArr[pos] = bulkyArr[i][j];
+                if (bulkyArr[i][j] < 0) {
+                    clauseArr[pos] = bulkyArr[i][j]+1;
+                    pos++;
+                }
+                else if (bulkyArr[i][j] > 0) {
+                    clauseArr[pos] = bulkyArr[i][j]-1;
                     pos++;
                 }
             }
@@ -654,7 +655,8 @@ public class CapstoneFileReader {
     // Find initial solution (greedy), satisfying all hard clauses if possible. 
     // Returns assignment as int[numVariables] with values 0 or 1.
     private int[] InitialSolution() {
-        // Arrays for tracking current assignment, and history of flips
+        return null; }
+    /*     // Arrays for tracking current assignment, and history of flips
         int[] assign = new int[numVariables];
         int[] history = new int[numVariables];
 
@@ -750,10 +752,10 @@ public class CapstoneFileReader {
         System.err.println("Warning: could not satisfy all hard clauses in InitialSolution()");
         initialSol = Arrays.copyOf(assign, assign.length);
         return initialSol;
-    }
+    }*/
 
     // --- Helper: check if a clause is satisfied ---
-    private boolean clauseSatisfied(int c, int[] assign) {
+    /*private boolean clauseSatisfied(int c, int[] assign) {
         int start = indices[c];
         int end = indices[c + 1]; // inclusive
         int required = values[c];
@@ -786,7 +788,7 @@ public class CapstoneFileReader {
             if (clauseSatisfied(c, assign)) sum += costs[c];
         }
         return sum;
-    }
+    }*/
 
 
 
