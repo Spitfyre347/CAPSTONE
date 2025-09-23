@@ -1,4 +1,4 @@
-p wcard 5 6 100
+p wcard 5 5 100
 c this specifies A=5 variables, B=6 clauses, and C=100 for hard clause prefixes
 c note C needs to be more than sum of all soft costs
 c note the p line need not be the first line
