@@ -267,7 +267,7 @@ public class CapstoneFileReader {
         OptimizeClauses();
 
         // Trim literals array to reduced EOF size, AND populate indices array
-        indices = new int[numClauses+1]; // +1 to store end of last clause
+        indices = new int[clauses.length+1]; // +1 to store end of last clause
         literals = OptimizeArrayStorage();
         
         // Calculate and populate clause and clause index arrays
@@ -281,6 +281,7 @@ public class CapstoneFileReader {
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
+        initialSol = InitialSolution();
         StopTimer();
 
         if (debug){
@@ -289,7 +290,7 @@ public class CapstoneFileReader {
 
         writeToFile("Preprocessing_Output.txt");
 
-        initialSol = InitialSolution();
+        
     }
 
 
@@ -560,7 +561,7 @@ public class CapstoneFileReader {
         int idx = 0; // pointer for new array
         int ind = 0; // pointer for indices array
 
-        for (int c = 0; c < numClauses; c++) {
+        for (int c = 0; c < clauses.length; c++) {
             int start = c * numVariables;
             int end = start + numVariables;
 
@@ -625,20 +626,6 @@ public class CapstoneFileReader {
         }
         indArr[indArr.length-1]= clauseArr.length;
 
-        // Print results
-        System.out.println(Arrays.deepToString(bulkyArr));
-
-        System.out.println("Flattened:");
-        for (int v : clauseArr) {
-            System.out.print(v + " ");
-        }
-        System.out.println();
-        System.out.println("Indices:");
-        for (int idx : indArr) {
-            System.out.print(idx + " ");
-        }
-        System.out.println();
-
         return bulkyArr;
     }
 
@@ -652,7 +639,8 @@ public class CapstoneFileReader {
             initialSol[i] = i+1;
 
         System.out.println(Arrays.toString(initialSol));
-        // Loop through each variable's clauses, and check it's preferred assignment (greedy)
+
+        // Step 1) Assign variables greedily based on soft clause weights
         int k = 0; // Pointer for specific clauses for a variable
         for (int i : initialSol){
             int weightIfTrue=0;
@@ -665,18 +653,88 @@ public class CapstoneFileReader {
                 else if (val > 0)
                     weightIfTrue += softCosts[Math.abs(val)-1];
                 else
-                    System.out.println("The prophecy has been reached, assemble brothers");
+                    System.out.println("The paradox has been reached, assemble brothers ⚔️⚔️⚔️");
                 
                 k++;
             }
-            System.out.println("True: " + weightIfTrue + ", False: " + weightIfFalse);
+
+            // Set to 1 if true, and -1 if false (makes checking far easier)
+            if (weightIfTrue >= weightIfFalse)
+                initialSol[i-1] = 1;
+            else
+                initialSol[i-1] = -1;
+            
         }
 
-        return null; 
+        System.out.println("Initial solution based on soft clauses: " + Arrays.toString(initialSol));
+        System.out.println("Current cost: " + calcCost(initialSol)); // Note: ↑ Cost = Good!
+
+        // Step 2) Generate list of unsatisfied hard clauses
+        
+        int[] hardLits = getHardLiterals();
+        int[] hardValues = getHardValues();
+        String unsatStr = "";
+        int val = 0;
+        int curVar;
+
+        for (int i = 0; i < hardIndices.length-1; i++){
+            // Check if i-th clause is satisfied   
+            val = 0;         
+            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
+                // Looping through every variable in the clause, check if it is satisfied.
+                curVar = hardLits[hardIndices[i]+j];
+
+                for (int l = 0; l < initialSol.length; l++)
+                    if ((l+1)*initialSol[l] == curVar)
+                        val++;
+            }
+            if (val < hardValues[i])
+                unsatStr += i + "|";
+        }
+        
+        int[] numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split("|")) // Remove extra separator at end, then split
+                              .mapToInt(Integer::parseInt)
+                              .toArray();
+
+        System.out.println("Unsatisfied hard clauses: " + Arrays.toString(numbers));
+        
+        // Step 3) For all variables in hard clauses, calculate cost of flipping
+
+        // Step 3) Satisfy all hard clauses by flipping variables with minimal cost increases
+
+        return initialSol; 
     }
 
 
     // Helper and auxiliary functions
+    public int calcCost(int[] assignments){
+        // Calculate current assignment soft cost
+        int curCost = 0;
+
+        int[] softValues = getSoftValues();
+        int[] softCosts = getSoftCosts();
+        int curVar;
+        int val=0;
+        int[] softLits = getSoftLiterals();
+        for (int i = 0; i < softIndices.length-1; i++){
+            // Check if i-th clause is satisfied         
+            val = 0;   
+            for (int j = 0; j < (softIndices[i+1]-softIndices[i]); j++){
+                // Looping through every variable in the clause, check if it is satisfied.
+                curVar = softLits[softIndices[i]+j];
+                
+                for (int l = 0; l < initialSol.length; l++)
+                    if ((l+1)*initialSol[l] == curVar)
+                        val++;
+                        
+            }
+            if (val >= softValues[i])
+                curCost += softCosts[i];
+        }
+
+        return curCost;
+    }
+
     public boolean isAllZeros(int[] arr) {
         for (int val : arr) {
             if (val != 0) {
@@ -747,7 +805,7 @@ public class CapstoneFileReader {
     public String toString(){
         return "CapstoneFileReader - Parsed Input Results \n------------------------------------------\n" +
                 "numVariables = " + numVariables +
-                "\nnumClauses = " + numClauses +
+                "\nnumClauses = " + clauses.length +
                 "\nhardCost = " + hardCost +
                 "\ncosts = " + Arrays.toString(costs) +
                 "\nliterals = " + Arrays.toString(literals) +
@@ -799,7 +857,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", true);
+        reader.InitializeClauses("test2.txt", false);
     }
 
 }
