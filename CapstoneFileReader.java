@@ -1,9 +1,9 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.BufferedReader;
 import java.util.Arrays;
 
 public class CapstoneFileReader {
@@ -22,25 +22,24 @@ public class CapstoneFileReader {
     private int[] values = null;
     private int[] indices = null;
 
-    private int[] softIndices = null, hardIndices = null; // Separate storage for new indices once optimization complete
-
-    private int[][] hardBulkyArr;
-    private int[][] softBulkyArr;
-    private int[] softClauses = null, hardClauses = null;
-    private int[] softClauseInds = null, hardClauseInds = null;
+    private int[] softIndices, hardIndices = null; // Separate storage for new indices once optimization complete
 
     private int[] initialSol = null;
 
     // Array of clauses
     private String[] clauses = null;
 
-    // Integer trackers (SOME OUTDATED AFTER RUNTIME)
+    // Integer trackers
     private int numVariables = 0;
-    private int numClauses = 0; // DEPRECATED (based on pre = calculation)
+    private int numClauses = 0;
     private int hardCost = -1;
+
+    //Variable for tracking how many clauses have actually been processed
+    private int processedClauses = 0;
 
     // Getters for the instance variables
     public int getNumVars() { return numVariables; }
+    public int getNumClauses() { return numClauses; }
 
     public int[] getSoftCosts() {
         int[] softCosts;
@@ -136,7 +135,7 @@ public class CapstoneFileReader {
         int[] sizes = new int[softLoc.length()];
 
         // Will also populate softIndices during this method
-        softIndices = new int[softLoc.length()+1];
+        softIndices = new int[softLoc.length()];
         
         // Calculate size for soft literals array, and work out size of each clause
         for (char c : softLoc.toCharArray()){   
@@ -159,27 +158,24 @@ public class CapstoneFileReader {
             }
             outerInd++;
         }
-
-        softIndices[softIndices.length-1] = softLits.length;
-        
         return softLits; 
     }
 
     public int[] getHardLiterals(){
-        int[] hardLits;
+         int[] hardLits;
 
         // Find locations where soft clauses appear in array
-        String hardLoc = getSoftLocs(true);
+        String softLoc = getSoftLocs(true);
         
         int size = 0;
         int ind = 0;
-        int[] sizes = new int[hardLoc.length()];
+        int[] sizes = new int[softLoc.length()];
 
         // Will also populate softIndices during this method
-        hardIndices = new int[hardLoc.length()+1];
+        hardIndices = new int[softLoc.length()];
         
         // Calculate size for soft literals array, and work out size of each clause
-        for (char c : hardLoc.toCharArray()){   
+        for (char c : softLoc.toCharArray()){   
             sizes[ind] = indices[c - '0' + 1] - indices[c - '0'];
             size += sizes[ind]; // for explanation see getSoftCosts()
             ind++;
@@ -199,9 +195,6 @@ public class CapstoneFileReader {
             }
             outerInd++;
         }
-
-        hardIndices[hardIndices.length-1] = hardLits.length;
-
         return hardLits; 
     }
 
@@ -222,18 +215,6 @@ public class CapstoneFileReader {
 
     }
 
-    public int[] getSoftClauses(){ return softClauses; }
-    public int[] getHardClauses(){ return hardClauses; }
-    public int[] getSoftClauseIndices(){ return softClauseInds; }
-    public int[] getHardClauseIndices(){ return hardClauseInds; }
-
-    public int getHardCost() {
-        if (hardCost == -1) {
-            throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
-        }
-        return hardCost;
-    }
-
     public int[] getInitialSol(){
         if (initialSol == null)
             System.out.println("No initial solution found, solver not initialized.");
@@ -242,6 +223,13 @@ public class CapstoneFileReader {
 
     // Deprecated
     //public int[] getLiterals() { return literals; }
+    
+    public int getHardCost() {
+        if (hardCost == -1) {
+            throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
+        }
+        return hardCost;
+    }
 
     public void InitializeClauses(String path, boolean Debug){
         StartTimer();
@@ -270,22 +258,14 @@ public class CapstoneFileReader {
         indices = new int[clauses.length+1]; // +1 to store end of last clause
         literals = OptimizeArrayStorage();
         
-        // Calculate and populate clause and clause index arrays
-        softClauseInds = new int[numVariables+1];
-        hardClauseInds = new int[numVariables+1];
-        softClauses = new int[getSoftLiterals().length];
-        hardClauses = new int[getHardLiterals().length];
-        softBulkyArr = PopulateClauseArrays(softClauseInds, softClauses, true);
-        hardBulkyArr = PopulateClauseArrays(hardClauseInds, hardClauses, false);
         
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
         initialSol = InitialSolution();
         StopTimer();
-
         if (debug){
-            System.out.println(toString());
+            printAll();
         }
 
         writeToFile("Preprocessing_Output.txt");
@@ -307,6 +287,11 @@ public class CapstoneFileReader {
             lines = Files.readAllLines(Paths.get(path)).toArray(new String[0]);
         } catch (IOException e){
             e.printStackTrace();
+            return false;
+        }
+
+        if(lines.length ==0){
+            System.out.println("Error detected - file is empty");
             return false;
         }
 
@@ -345,11 +330,30 @@ public class CapstoneFileReader {
                 if(line.charAt(0) == 'p'){
                     lineHolder = line.split("\\s+");
 
+                    if (lineHolder.length != 5){        
+                        System.out.println("Invalid line detected - Header must contain 5 arguments (Header identifier, format, numVariables, numClauses, hardCost)");
+                        System.out.println("Line: " + line);
+                        return false;
+
+                    }
+
                     // Adjust number of clauses for input parsing later on
+
+                    if (!(isInteger(lineHolder[2]) && isInteger(lineHolder[3]) && isInteger(lineHolder[4]))) {
+                        System.out.println("Invalid line detected - Header number of variables, number of clauses or hard cost is not an integer value");
+                        System.out.println("Line: " + line);
+                        return false;
+                    }
                     numClauses = Integer.parseInt(lineHolder[3]);
 
                     numVariables =Integer.parseInt(lineHolder[2]);
                     hardCost = Integer.parseInt(lineHolder[4]);
+
+                    if (numVariables <= 0 || numClauses < 0 || hardCost <= 0) {
+                        System.out.println("Invalid line detected - numVariables must be >0, numclauses must be >=0, hardCost must be > 0");
+                        System.out.println("Line: " + line);
+                        return false;
+                    }
 
                     // Initialize all arrays
                     costs = new int[numClauses + equalsClauseCounter];
@@ -383,18 +387,31 @@ public class CapstoneFileReader {
 
             // Ensure clause begins with an integer (cost)
             int num;
-            try {
-                num = Integer.parseInt(lineHolder[0]);
-            } catch (Exception e){
-                System.out.println("Invalid line detected - Line does not fit format of clause, comment or header");
+            if(!isInteger(lineHolder[0])){
+                System.out.println("Invalid line detected - Clause does not begin with a number");
                 System.out.println("Line: " + line);
-                e.printStackTrace();
                 return false;
             }
 
+            num = Integer.parseInt(lineHolder[0]);
+
             // Ensure cost is positive
-            if(num < 0){
-                System.out.println("Invalid line detected - A cost may not be negative");
+            if(num < 0 || num > hardCost){
+                System.out.println("Invalid line detected - A cost may not be negative or exceed the hard cost");
+                System.out.println("Line: " + line);
+                System.out.println("Hard cost: " + Integer.toString(hardCost));
+                return false;
+            }
+
+            if (!isInteger(lineHolder[lineHolder.length-1]) || Integer.parseInt(lineHolder[lineHolder.length-1]) > numVariables || Integer.parseInt(lineHolder[lineHolder.length-1]) < 0) {
+                System.out.println("Invalid line detected - A clause is terminating in something other than an Integer or the k value is too large");
+                System.out.println("Line: " + line);
+                System.out.println("Hard cost: " + Integer.toString(hardCost));
+                return false;
+            }
+
+            if (!isInteger(lineHolder[lineHolder.length-1]) || Integer.parseInt(lineHolder[lineHolder.length-1]) > numVariables || Integer.parseInt(lineHolder[lineHolder.length-1]) < 0) {
+                System.out.println("Invalid line detected - A clause is terminating in something other than an Integer or the k value is too large");
                 System.out.println("Line: " + line);
                 return false;
             }
@@ -406,9 +423,18 @@ public class CapstoneFileReader {
             switch (lineHolder[numArgs-2]) {
                 case ">=":
                     // Format is fine as is
+
+                    if (Integer.parseInt(lineHolder[lineHolder.length-1]) < 1) {
+                        System.out.println("Invalid line detected - k value must be >=1 and <= number of clauses for a >= clause");
+                        System.out.println("Line: " + line);
+                        return false;
+                        
+                    }
                     clauses[clauseCounter] = this.arrToStr(lineHolder);
 
                     populateArrays(lineHolder, clauseCounter, numVariables);
+
+                    
                     break;
                 case "<=":
                     // Convert to >= (standardized format)
@@ -419,6 +445,7 @@ public class CapstoneFileReader {
                     break;
                 case "=":
                     // If the clause is an exact clause, we need to convert it to two >= clauses
+                   
                     String[] geqLineHolder = eqtogeq(lineHolder, false); 
                     clauses[clauseCounter] = this.arrToStr(geqLineHolder);
                     populateArrays(geqLineHolder, clauseCounter, numVariables);
@@ -454,7 +481,26 @@ public class CapstoneFileReader {
                     break;
             }
             clauseCounter++;
+            if (clauseCounter > numClauses) {
+                System.out.println("Error - Amount of processed clauses exceeds amount of clauses specified in header");
+                return false;
+                
+            }
+            
         }
+
+        if (!initialised) {
+            System.out.println("Error detected - no header line found");
+            return false;
+        }
+
+        
+        if (numClauses != clauseCounter - equalsClauseCounter){
+            System.out.println("Error detected - Number of processed clauses does not match amount of clauses specified in header");
+            return false;
+        }
+
+        if (debug) System.out.println(this.toString());
 
         // If this point is reached, execution is successful.
         return true;
@@ -570,12 +616,15 @@ public class CapstoneFileReader {
 
             // Add all nonzero literals in this clause
             for (int i = start; i < end; i++) {
-                if (literals[i] != 0) 
+
+                if (literals[i] != 0) {
                     newliterals[idx++] = literals[i];
-            }    
+                }
+            }
+
+            indices[ind] = idx-1;
         }
-        
-        indices[ind] = idx;
+
         return newliterals;
     }
 
@@ -741,9 +790,11 @@ public class CapstoneFileReader {
                 return false; // found non-zero
             }
         }
-        return true; // all were zeros
+        return sum;
     }
 
+
+    // Helper and auxiliary functions
     private String getSoftLocs(boolean invert){
         String softInd = "";
 
@@ -798,8 +849,23 @@ public class CapstoneFileReader {
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
         for (int i = 1; i < len -2 ; i++){
+            if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
+                
+                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+            }
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
         }
+    }
+
+    public boolean isInteger(String potentialNumber){
+
+        try {
+            int number = Integer.parseInt(potentialNumber);
+            return true;    
+        } catch (Exception e) {
+            return false;
+        }
+        
     }
     
     public String toString(){
@@ -811,24 +877,7 @@ public class CapstoneFileReader {
                 "\nliterals = " + Arrays.toString(literals) +
                 "\nvalues = " + Arrays.toString(values) +
                 "\nindices = " + Arrays.toString(indices) +
-                "\n(clauses = " + Arrays.toString(clauses)+ ")" +
-                "\n\nSoft Costs: " + Arrays.toString(getSoftCosts()) + 
-                "\nSoft Values: " + Arrays.toString(getSoftValues()) +
-                "\nHard Values: " + Arrays.toString(getHardValues()) +
-                "\n(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")" +
-                "\n(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")" +
-                "\nSoft Literals: " + Arrays.toString(getSoftLiterals()) +
-                "\nHard Literals: " + Arrays.toString(getHardLiterals()) +
-                "\nSoft Indices: " + Arrays.toString(getSoftIndices()) +
-                "\nHard Indices: " + Arrays.toString(getHardIndices()) +
-                "\n\nRaw Soft Clauses Array: " + Arrays.deepToString(softBulkyArr) +
-                "\nSoft Clauses by Var: " + Arrays.toString(getSoftClauses()) +
-                "\nSoft Clause Indices by Var: " + Arrays.toString(getSoftClauseIndices()) +
-                "\nRaw Hard Clauses Array: " + Arrays.deepToString(hardBulkyArr) +
-                "\nHard Clauses by Var: " + Arrays.toString(getHardClauses()) +
-                "\nHard Clause Indices by Var: " + Arrays.toString(getHardClauseIndices()) +
-                "\n\nInitial Soln: " + Arrays.toString(getInitialSol()) +
-                "\n\nElapsed time: " + (endTime - startTime) + " ms";
+                "\n(clauses = " + Arrays.toString(clauses)+ ")";
     }
 
     private void StartTimer(){
@@ -840,12 +889,42 @@ public class CapstoneFileReader {
         long elapsedTime = endTime - startTime;
         System.out.println("Elapsed time: " + elapsedTime + " ms");
     }
-    
+
+    public void printAll(){
+        System.out.println(toString());
+        System.out.println("Soft Costs: " + Arrays.toString(getSoftCosts()));
+        System.out.println("Soft Values: " + Arrays.toString(getSoftValues()));
+        System.out.println("Hard Values: " + Arrays.toString(getHardValues()));
+        System.out.println("(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
+        System.out.println("(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
+        
+        System.out.println("Soft Literals: " + Arrays.toString(getSoftLiterals()));
+        System.out.println("Hard Literals: " + Arrays.toString(getHardLiterals()));
+
+        System.out.println("Soft Indices: " + Arrays.toString(getSoftIndices()));
+        System.out.println("Hard Indices: " + Arrays.toString(getHardIndices()));
+
+        System.out.println("Initial Soln: " + Arrays.toString(getInitialSol()));
+    }
+
     public void writeToFile(String path){
         FileWriter writer = null;
         try {
             writer = new FileWriter(path);
             writer.write(toString());
+            writer.write("\n\nSoft Costs: " + Arrays.toString(getSoftCosts()));
+            writer.write("\nSoft Values: " + Arrays.toString(getSoftValues()));
+            writer.write("\nHard Values: " + Arrays.toString(getHardValues()));
+            writer.write("\n(Outer Soft Indices: " + Arrays.toString(getOuterSoftIndices()) + ")");
+            writer.write("\n(Outer Hard Indices: " + Arrays.toString(getOuterHardIndices()) + ")");
+            
+            writer.write("\nSoft Literals: " + Arrays.toString(getSoftLiterals()));
+            writer.write("\nHard Literals: " + Arrays.toString(getHardLiterals()));
+
+            writer.write("\nSoft Indices: " + Arrays.toString(getSoftIndices()));
+            writer.write("\nHard Indices: " + Arrays.toString(getHardIndices()));
+            writer.write("\nInitial Soln: " + Arrays.toString(getInitialSol()));
+            writer.write("\n\nElapsed time: " + (endTime - startTime) + " ms");
             writer.close(); // Always close the writer
 
         } catch (IOException e) {
@@ -857,7 +936,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test2.txt", false);
+        reader.InitializeClauses("test.txt", true);
     }
 
 }
