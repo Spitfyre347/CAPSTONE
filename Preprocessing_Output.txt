@@ -28,4 +28,4 @@ Hard Clause Indices by Var: [0, 1, 2, 3, 4, 4]
 
 Initial Soln: null
 
-Elapsed time: 59 ms
+Elapsed time: 74 ms

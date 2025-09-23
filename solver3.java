@@ -198,7 +198,7 @@ public class solver3 {
                 skip = false;
                 bestFlip = random.nextInt(numVars);
                 // Check hard clauses
-                for (int i=hardClauseIndices[bestFlip]; i < hardClauseIndices[bestFlip+1]; i++)
+                for (int i=hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
                 {
                     sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
 
@@ -244,7 +244,7 @@ public class solver3 {
                     makeScores[i] = 0;
 
                     // Run for soft clauses
-                    for (int j=softClauseIndices[v]; j < softClauseIndices[v+1]; j++) // check each soft clause affected by literal v
+                    for (int j=softClauseIndices[v-1]; j < softClauseIndices[v-1+1]; j++) // check each soft clause affected by literal v
                     {
                         sign = (softClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
                         if (softFloats[softClauses[j]*sign]==0) // check if break score will increase
@@ -260,7 +260,7 @@ public class solver3 {
                     }
                     
                     // Check hard clauses
-                    for (int j=hardClauseIndices[v]; j < hardClauseIndices[v+1]; j++) // check each hard clause affected by literal v
+                    for (int j=hardClauseIndices[v-1]; j < hardClauseIndices[v-1+1]; j++) // check each hard clause affected by literal v
                     {
                         sign = (hardClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
                         System.out.println("hard sign fine");
@@ -331,7 +331,6 @@ public class solver3 {
             // Loop over each variable that could occur in clause
             for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
             {
-                System.out.println("hardLiterals["+String.valueOf(i)+"]: "+String.valueOf(hardLiterals[i]));
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (hardLiterals[i] > 0)
                 {
@@ -344,7 +343,6 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            System.out.println("Float: "+String.valueOf((sum - hardValues[clauseToCheck])));
             return (sum - hardValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
         else
