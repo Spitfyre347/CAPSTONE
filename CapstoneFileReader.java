@@ -473,6 +473,11 @@ public class CapstoneFileReader {
                     break;
             }
             clauseCounter++;
+            if (clauseCounter > numClauses) {
+                System.out.println("Error - Amount of processed clauses exceeds amount of clauses specified in header");
+                return false;
+                
+            }
             
         }
 
@@ -481,7 +486,8 @@ public class CapstoneFileReader {
             return false;
         }
 
-        if (numClauses!= clauseCounter - equalsClauseCounter){
+        
+        if (numClauses != clauseCounter - equalsClauseCounter){
             System.out.println("Error detected - Number of processed clauses does not match amount of clauses specified in header");
             return false;
         }
