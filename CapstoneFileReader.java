@@ -34,9 +34,9 @@ public class CapstoneFileReader {
     // Array of clauses
     private String[] clauses = null;
 
-    // Integer trackers (SOME DEPRECATED)
+    // Integer trackers (SOME OUTDATED AFTER RUNTIME)
     private int numVariables = 0;
-    private int numClauses = 0;
+    private int numClauses = 0; // DEPRECATED (based on pre = calculation)
     private int hardCost = -1;
 
     // Getters for the instance variables
@@ -227,15 +227,12 @@ public class CapstoneFileReader {
     public int[] getSoftClauseIndices(){ return softClauseInds; }
     public int[] getHardClauseIndices(){ return hardClauseInds; }
 
-
     public int getHardCost() {
         if (hardCost == -1) {
             throw new IllegalStateException("Hard cost has not been set. Please check the file format.");
         }
         return hardCost;
     }
-
-
 
     public int[] getInitialSol(){
         if (initialSol == null)
@@ -245,8 +242,6 @@ public class CapstoneFileReader {
 
     // Deprecated
     //public int[] getLiterals() { return literals; }
-    
-    
 
     public void InitializeClauses(String path, boolean Debug){
         StartTimer();
@@ -651,143 +646,34 @@ public class CapstoneFileReader {
     // Find initial solution (greedy), satisfying all hard clauses if possible. 
     // Returns assignment as int[numVariables] with values 0 or 1.
     private int[] InitialSolution() {
-        return null; }
-    /*     // Arrays for tracking current assignment, and history of flips
-        int[] assign = new int[numVariables];
-        int[] history = new int[numVariables];
+        initialSol = new int[numVariables];
+        int[] softCosts = getSoftCosts();
+        for (int i = 0; i < numVariables; i++)
+            initialSol[i] = i+1;
 
-        // Random number generator with fixed seed for reproducibility
-        java.util.Random rand = new java.util.Random(12345);
+        System.out.println(Arrays.toString(initialSol));
+        // Loop through each variable's clauses, and check it's preferred assignment (greedy)
+        int k = 0; // Pointer for specific clauses for a variable
+        for (int i : initialSol){
+            int weightIfTrue=0;
+            int weightIfFalse=0;
 
-        // To start, set a weight-sensitive greedy initialization
-        long[] oneBenefit = new long[numVariables];
-        long[] zeroBenefit = new long[numVariables];
-
-        // For every clause (soft only), accumulate benefit
-        for (int c = 0; c < numClauses; c++) {
-            if (costs[c] == hardCost) 
-                continue; // skip hard clauses
-
-            int start = indices[c];
-            int end = indices[c + 1];
-            int cost = costs[c];
-
-            for (int k = start; k < end; k++) {
-                int lit = literals[k];
-                int var = Math.abs(lit) - 1; // -1 since benefit arrays are 0-indexed
-                if (lit > 0) 
-                    oneBenefit[var] += cost;
-                else 
-                    zeroBenefit[var] += cost;
+            while (k < softClauseInds[i]){
+                int val = softClauses[k];
+                if (val<0)
+                    weightIfFalse += softCosts[Math.abs(val)-1];
+                else if (val > 0)
+                    weightIfTrue += softCosts[Math.abs(val)-1];
+                else
+                    System.out.println("The prophecy has been reached, assemble brothers");
+                
+                k++;
             }
+            System.out.println("True: " + weightIfTrue + ", False: " + weightIfFalse);
         }
 
-        // Assign greedily (maximum cost benefit)
-        for (int v = 0; v < numVariables; v++) {
-            assign[v] = (oneBenefit[v] >= zeroBenefit[v]) ? 1 : 0;
-        }
-
-        // Then, repair hard clauses
-        final int MAX_ITERS = numVariables * 50;
-        for (int iter = 0; iter < MAX_ITERS; iter++) {
-            int unsatHard = findUnsatHardClause(assign);
-            if (unsatHard == -1) {
-                // success
-                initialSol = Arrays.copyOf(assign, assign.length);
-                return initialSol;
-            }
-
-            // Try to fix by flipping a variable in that clause
-            int start = indices[unsatHard];
-            int end = indices[unsatHard + 1]; // inclusive
-            int bestVar = -1;
-            int bestNewVal = -1;
-            long bestLoss = Long.MAX_VALUE;
-            int bestHist = Integer.MAX_VALUE;
-
-            for (int k = start; k <= end; k++) {
-                int lit = literals[k];
-                int var = Math.abs(lit) - 1;
-                int targetVal = (lit > 0) ? 1 : 0;
-
-                if (assign[var] == targetVal) continue; // already set correctly, clause still unsat, need others
-
-                // compute soft weight loss if we flip var
-                int oldVal = assign[var];
-                assign[var] = targetVal;
-                long newSoft = softSatisfiedWeight(assign);
-                assign[var] = oldVal;
-                long oldSoft = softSatisfiedWeight(assign);
-                long loss = oldSoft - newSoft;
-
-                if (loss < bestLoss ||
-                    (loss == bestLoss && history[var] < bestHist) ||
-                    (loss == bestLoss && history[var] == bestHist && rand.nextBoolean())) {
-                    bestLoss = loss;
-                    bestVar = var;
-                    bestNewVal = targetVal;
-                    bestHist = history[var];
-                }
-            }
-
-            // apply the chosen flip
-            if (bestVar != -1) {
-                assign[bestVar] = bestNewVal;
-                history[bestVar]++;
-            } else {
-                // if no variable found, flip something random
-                int lit = literals[start + rand.nextInt(end - start + 1)];
-                bestVar = Math.abs(lit) - 1;
-                bestNewVal = (lit > 0) ? 1 : 0;
-                assign[bestVar] = bestNewVal;
-                history[bestVar]++;
-            }
-        }
-
-        // If failed, warn but return best effort
-        System.err.println("Warning: could not satisfy all hard clauses in InitialSolution()");
-        initialSol = Arrays.copyOf(assign, assign.length);
-        return initialSol;
-    }*/
-
-    // --- Helper: check if a clause is satisfied ---
-    /*private boolean clauseSatisfied(int c, int[] assign) {
-        int start = indices[c];
-        int end = indices[c + 1]; // inclusive
-        int required = values[c];
-        int count = 0;
-        for (int k = start; k <= end; k++) {
-            int lit = literals[k];
-            int var = Math.abs(lit) - 1;
-            boolean litTrue = (lit > 0) ? (assign[var] == 1) : (assign[var] == 0);
-            if (litTrue) count++;
-            if (count >= required) return true;
-        }
-        return false;
+        return null; 
     }
-
-    // --- Helper: find one unsatisfied hard clause (or -1 if all satisfied) ---
-    private int findUnsatHardClause(int[] assign) {
-        for (int c = 0; c < numClauses; c++) {
-            if (costs[c] == hardCost && !clauseSatisfied(c, assign)) {
-                return c;
-            }
-        }
-        return -1;
-    }
-
-    // --- Helper: total soft weight satisfied by assignment ---
-    private long softSatisfiedWeight(int[] assign) {
-        long sum = 0;
-        for (int c = 0; c < numClauses; c++) {
-            if (costs[c] == hardCost) continue;
-            if (clauseSatisfied(c, assign)) sum += costs[c];
-        }
-        return sum;
-    }*/
-
-
-
 
 
     // Helper and auxiliary functions
@@ -799,7 +685,6 @@ public class CapstoneFileReader {
         }
         return true; // all were zeros
     }
-
 
     private String getSoftLocs(boolean invert){
         String softInd = "";
@@ -898,7 +783,6 @@ public class CapstoneFileReader {
         System.out.println("Elapsed time: " + elapsedTime + " ms");
     }
     
-
     public void writeToFile(String path){
         FileWriter writer = null;
         try {
