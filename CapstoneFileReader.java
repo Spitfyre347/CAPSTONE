@@ -622,12 +622,8 @@ public class CapstoneFileReader {
         for (int i = 0; i < bulkyArr.length; i++) {
             indArr[i] = pos;  // mark start index
             for (int j = 0; j < bulkyArr[i].length; j++) {
-                if (bulkyArr[i][j] < 0) {
-                    clauseArr[pos] = bulkyArr[i][j]+1;
-                    pos++;
-                }
-                else if (bulkyArr[i][j] > 0) {
-                    clauseArr[pos] = bulkyArr[i][j]-1;
+                if (bulkyArr[i][j] != 0) {
+                    clauseArr[pos] = bulkyArr[i][j];
                     pos++;
                 }
             }
