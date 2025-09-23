@@ -30,6 +30,11 @@ public class CapstoneFileReader {
     private int[] softClauseInds = null, hardClauseInds = null;
 
     private int[] initialSol = null;
+    private int[] FirstInitialSol = null;
+    private int[] numbers = null;
+    private int[] floatsArr = null;
+    private int[] hardVarArr = null;
+    private int[] flipCosts = null;
 
     // Array of clauses
     private String[] clauses = null;
@@ -666,14 +671,14 @@ public class CapstoneFileReader {
             
         }
 
-        System.out.println("Initial solution based on soft clauses: " + Arrays.toString(initialSol));
-        System.out.println("Current cost: " + calcCost(initialSol)); // Note: ↑ Cost = Good!
+        FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
-        // Step 2) Generate list of unsatisfied hard clauses
+        // Step 2) Generate list of unsatisfied hard clauses, and their floats
         
         int[] hardLits = getHardLiterals();
         int[] hardValues = getHardValues();
         String unsatStr = "";
+        String floats = "";
         int val = 0;
         int curVar;
 
@@ -688,21 +693,98 @@ public class CapstoneFileReader {
                     if ((l+1)*initialSol[l] == curVar)
                         val++;
             }
-            if (val < hardValues[i])
-                unsatStr += i + "|";
+            if (val < hardValues[i]){
+                unsatStr += i + " ";
+                floats += hardValues[i] - val + " "; // Number of literals in clause not satisfied
+            }
+                
         }
         
-        int[] numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split("|")) // Remove extra separator at end, then split
+        numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
                               .mapToInt(Integer::parseInt)
                               .toArray();
 
-        System.out.println("Unsatisfied hard clauses: " + Arrays.toString(numbers));
+        floatsArr = Arrays.stream((floats.substring(0, floats.length() - 1)).split(" ")) // Remove extra separator at end, then split
+                              .mapToInt(Integer::parseInt)
+                              .toArray();
+
+
         // Step 3) For all variables in hard clauses, calculate cost of flipping
+        String hardVars = "";
+        for (int i : numbers){
+            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
+                curVar = hardLits[hardIndices[i]+j];
+                if (!hardVars.contains(String.valueOf(Math.abs(curVar))))
+                    hardVars += String.valueOf(Math.abs(curVar)) + " ";
+            }
+        }
+        hardVarArr = Arrays.stream((hardVars.substring(0, hardVars.length() - 1)).split(" ")) // Remove extra separator at end, then split
+                                    .mapToInt(Integer::parseInt)
+                                    .toArray();
+
+
+        flipCosts = new int[hardVarArr.length];
+        for (int i = 0; i < hardVarArr.length; i++)
+        {
+                    
+            int unflippedCost = calcCost(initialSol);
+            initialSol[hardVarArr[i]-1] *= -1; // Flip variable
+            int flippedCost = calcCost(initialSol);
+            initialSol[hardVarArr[i]-1] *= -1; // Flip back
+
+            flipCosts[i] = flippedCost - unflippedCost;
+        }
 
         // Step 3) Satisfy all hard clauses by flipping variables with minimal cost increases
 
+        // Sort variables by cost of flipping
+        for (int i = 0; i < flipCosts.length - 1; i++) {
+            for (int j = i + 1; j < flipCosts.length; j++) {
+                if (flipCosts[i] < flipCosts[j]) {
+                    int tempVar = flipCosts[i];
+                    flipCosts[i] = flipCosts[j];
+                    flipCosts[j] = tempVar;
+
+                    // swap corresponding variables
+                    tempVar = hardVarArr[i];
+                    hardVarArr[i] = hardVarArr[j];
+                    hardVarArr[j] = tempVar;
+                }
+            }
+        }
+
+        // Now, flip variables until all hard clauses are satisfied
+        boolean done = false;
+        int ind = 0;
+        while (!done)
+        {
+            initialSol[hardVarArr[ind++]-1] *= -1; // Flip variable with best break cost
+
+            // Check if all hard clauses are satisfied, and flip next variable if not
+            int unsatClauses = 0;
+            for (int i = 0; i < hardIndices.length-1; i++){
+                // Check if i-th clause is satisfied   
+                val = 0;         
+                for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
+                    // Looping through every variable in the clause, check if it is satisfied.
+                    curVar = hardLits[hardIndices[i]+j];
+
+                    for (int l = 0; l < initialSol.length; l++)
+                        if ((l+1)*initialSol[l] == curVar)
+                            val++;
+                }
+                if (val < hardValues[i]){
+                    unsatClauses++;
+                }
+            }
+            if (unsatClauses == 0)
+                done = true;
+        }
+        
         return initialSol; 
     }
+
+    
 
 
     // Helper and auxiliary functions
@@ -826,7 +908,14 @@ public class CapstoneFileReader {
                 "\nRaw Hard Clauses Array: " + Arrays.deepToString(hardBulkyArr) +
                 "\nHard Clauses by Var: " + Arrays.toString(getHardClauses()) +
                 "\nHard Clause Indices by Var: " + Arrays.toString(getHardClauseIndices()) +
-                "\n\nInitial Soln: " + Arrays.toString(getInitialSol()) +
+                "\n\nFirst Initial Soln: " + Arrays.toString(FirstInitialSol) +
+                "\nFirst Soft Cost: " + calcCost(FirstInitialSol) +
+                "\nUnsatisfied Hard Clauses: " + Arrays.toString(numbers) +
+                "\nUnsatisfied Floats: " + Arrays.toString(floatsArr) +
+                "\nVariables in unsatisfied hard clauses: " + Arrays.toString(hardVarArr) +
+                "\nCost of flipping each variable: " + Arrays.toString(flipCosts) +
+                "\nInitial Soln: " + Arrays.toString(initialSol) +
+                "\nSoft Cost: " + calcCost(initialSol) +
                 "\n\nElapsed time: " + (endTime - startTime) + " ms";
     }
 
