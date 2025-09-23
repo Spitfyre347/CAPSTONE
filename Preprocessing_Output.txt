@@ -21,11 +21,11 @@ Hard Indices: [0, 4]
 
 Raw Soft Clauses Array: [[0, 2, 0, 4, -5], [0, 2, -3, 4, -5], [0, 2, -3, 4, -5], [1, 0, -3, 4, -5], [1, 0, 0, 0, 0]]
 Soft Clauses by Var: [2, 4, -5, 2, -3, 4, -5, 2, -3, 4, -5, 1, -3, 4, -5, 1]
-Soft Clause Indices by Var: [0, 1, 2, 3, 4, 4]
+Soft Clause Indices by Var: [0, 3, 7, 11, 15, 16]
 Raw Hard Clauses Array: [[-1], [-1], [-1], [-1], [0]]
 Hard Clauses by Var: [-1, -1, -1, -1]
 Hard Clause Indices by Var: [0, 1, 2, 3, 4, 4]
 
 Initial Soln: null
 
-Elapsed time: 51 ms
+Elapsed time: 59 ms

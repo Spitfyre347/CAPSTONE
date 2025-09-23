@@ -224,7 +224,7 @@ public class CapstoneFileReader {
 
     public int[] getSoftClauses(){ return softClauses; }
     public int[] getHardClauses(){ return hardClauses; }
-    public int[] getSoftClauseIndices(){ return hardClauseInds; }
+    public int[] getSoftClauseIndices(){ return softClauseInds; }
     public int[] getHardClauseIndices(){ return hardClauseInds; }
 
 
@@ -615,7 +615,7 @@ public class CapstoneFileReader {
           |🏆  CODE AWARD OF EXCELLENCE 🏆 |
           |─────────────────────────────────|
           | ✨ For writing truly spec- ✨  |
-          |          tacular code!          |
+          |          tacular code!          | THAT DOESN'T WORK!!!!!!!
           |─────────────────────────────────|*/
 
 
