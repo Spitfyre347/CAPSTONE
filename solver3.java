@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class solver3 {
 
     // Max runtime
-    private final static int T = 10000000;
+    private final static int T = 100;
 
     // Variables
     static BitSet vars; // BitSet to keep track of boolean variables
@@ -66,8 +66,13 @@ public class solver3 {
 
         // Get initial boolean assignment from preprocessing
         // All hard clauses are SAT
-
-        // Link variables to clauses
+        int[] inital_sol = new int[numVars];
+        inital_sol = reader.getInitialSol();
+        for (int k=0; k < numVars; k++)
+        {
+            //if (inital_sol[k]==1) {vars.set(k-1);}
+        }
+        vars.clear();
     }
 
     
@@ -82,6 +87,9 @@ public class solver3 {
         {
             hardFloats[c] = checkFloat(c, true);
         }
+
+        System.out.println("Hard floats:");
+        for (int x=0; x<hardFloats.length;x++) {System.out.println(hardFloats[x]);}
 
         // Calculate:
         // 1. total cost of initial state
@@ -123,6 +131,7 @@ public class solver3 {
         int sign = 1;
         while (true)
         {
+            System.out.println(String.valueOf(t));
             // Algorithm:
             // update floats - ONLY AFFECTED CLAUSES
             // calculate cost and update best assignment - ONLY AFFECTED CLAUSES
@@ -144,6 +153,8 @@ public class solver3 {
             {
                 softFloats[c] = checkFloat(c, false);
             }
+
+            System.out.println("AFter float");
 
             // Calculate total cost of state and update unsat array - ONLY AFFECTED CLAUSES
             curTotalCost = 0;
@@ -168,18 +179,22 @@ public class solver3 {
                 System.out.println("New Best Cost: " + Long.toString(bestCost));
             }
 
+            System.out.println("aFter cost");
+
             t++;
 
             if (t > T) {break;} // if time is up, end run
 
             // Convert unsat ArrayList into int[]
             unsat_arr = new int[unsat.size()];
-            for (int i = 0; i < unsat_arr.length; i++) {unsat_arr[i] = unsat.get(i);}
+            for (int i = 0; i < unsat.size(); i++) {unsat_arr[i] = unsat.get(i);}
             
+            System.out.println("Afer unsat conversion");
 
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
             {
+                System.out.println("Random chance:");
                 skip = false;
                 bestFlip = random.nextInt(numVars);
                 // Check hard clauses
@@ -190,10 +205,11 @@ public class solver3 {
                     // If a hard clause will get broken, ensure this variable isn't picked
                     if (hardFloats[hardClauses[i]*sign]==0)
                     {
-                        if (vars.get(bestFlip) && sign==1) {skip = true; break;}
-                        else if (!vars.get(bestFlip) && sign==-1) {skip = true; break;}
+                        if (vars.get(bestFlip-1) && sign==1) {skip = true; break;}
+                        else if (!vars.get(bestFlip-1) && sign==-1) {skip = true; break;}
                     }
                 }
+                System.out.println("    skip: "+String.valueOf(skip));
 
                 if (skip) {continue;}
             
@@ -201,8 +217,12 @@ public class solver3 {
             // Otherwise take greedy flip
             else 
             {
+                System.out.println("NOT random: ");
+                System.out.println(unsat.toString());
                 // Pick unsat soft clause with weighted probability:
                 curClause = pickClause(unsat_arr, random);
+
+                System.out.println("After pickClause");
 
                 // Get literals involved in selected clause:
                 start = softIndices[curClause];
@@ -219,24 +239,23 @@ public class solver3 {
                 {
                     v = softLiterals[i];
 
-                    // Initialise make and break scores for v
-                    breakScores[v] = 0;
-                    makeScores[v] = 0;
+                    // Initialise make and break scores for index i of v
+                    breakScores[i] = 0;
+                    makeScores[i] = 0;
 
                     // Run for soft clauses
                     for (int j=softClauseIndices[v]; j < softClauseIndices[v+1]; j++) // check each soft clause affected by literal v
                     {
                         sign = (softClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
-
                         if (softFloats[softClauses[j]*sign]==0) // check if break score will increase
                         {
-                            if (vars.get(v) && sign==1) {breakScores[v] = breakScores[v] + softCosts[softClauses[j]*sign];} // increase breakscore by cost of clause
-                            else if (!vars.get(v) && sign==-1) {breakScores[v] = breakScores[v] + softCosts[softClauses[j]*sign];}
+                            if (vars.get(v-1) && sign==1) {breakScores[i] = breakScores[i] + softCosts[softClauses[j]*sign];} // increase breakscore by cost of clause
+                            else if (!vars.get(v-1) && sign==-1) {breakScores[i] = breakScores[i] + softCosts[softClauses[j]*sign];}
                         }
                         else if (softFloats[softClauses[j]*sign]==-1) // check if make score will increase
                         {
-                            if (!vars.get(v) && sign==1) {makeScores[v] = makeScores[v] + softCosts[softClauses[j]*sign];} // increase makescore by cost of clause
-                            else if (vars.get(v) && sign==-1) {makeScores[v] = makeScores[v] + softCosts[softClauses[j]*sign];}
+                            if (!vars.get(v-1) && sign==1) {makeScores[i] = makeScores[i] + softCosts[softClauses[j]*sign];} // increase makescore by cost of clause
+                            else if (vars.get(v-1) && sign==-1) {makeScores[i] = makeScores[i] + softCosts[softClauses[j]*sign];}
                         }
                     }
                     
@@ -244,29 +263,31 @@ public class solver3 {
                     for (int j=hardClauseIndices[v]; j < hardClauseIndices[v+1]; j++) // check each hard clause affected by literal v
                     {
                         sign = (hardClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
-
+                        System.out.println("hard sign fine");
                         // If a hard clause will get broken, ensure this variable isn't picked by making score the min
                         if (hardFloats[hardClauses[j]*sign]==0)
                         {
-                            if (vars.get(v) && sign==1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
-                            else if (!vars.get(v) && sign==-1) {breakScores[v] = 0; makeScores[v]= Long.MIN_VALUE;}
+                            if (vars.get(v-1) && sign==1) {breakScores[i] = 0; makeScores[i]= Long.MIN_VALUE;}
+                            else if (!vars.get(v-1) && sign==-1) {breakScores[i] = 0; makeScores[i]= Long.MIN_VALUE;}
                         }
                     }
                     
                     // Keep track of best score
-                    if (makeScores[v] - breakScores[v] > bestScore) // best is max
+                    if (makeScores[i] - breakScores[i] > bestScore) // best is max
                     {
-                        bestScore = makeScores[v] - breakScores[v];
+                        bestScore = makeScores[i] - breakScores[i];
                         bestFlip = v; //heuristic
                     }
                 }
+
+                System.out.println("Best flip calculated");
 
                 // If all flips break a hard clause, skip to next unsat clause
                 if (bestFlip==-1) {continue;}
             }
 
             // Flip selected variable
-            vars.flip(bestFlip);
+            vars.flip(bestFlip-1);
         }
 
         System.out.println("Final Best Cost: " + String.valueOf(bestCost));
@@ -289,7 +310,7 @@ public class solver3 {
         int[] costs = new int[unsat.length];
         for (int c=0; c < unsat.length; c++)
         {
-            costs[c] = dynamicCosts[unsat[c]]; // get relevant weighted costs
+            costs[c] = softCosts[unsat[c]]; // get relevant weighted costs
             totalCost += costs[c]; // calculate sum of costs to normalize prob.
         }
 
@@ -297,7 +318,7 @@ public class solver3 {
         while (true) 
         {
             unif = random.nextInt(unsat.length); // Uniformly draw from clauses
-            if (random.nextDouble() < costs[unif] / totalCost) {return unsat[unif];} // Accept with prob cost/total_cost
+            if (random.nextDouble() < ( (double) costs[unif] / totalCost)) {return unsat[unif];} // Accept with prob cost/total_cost
         }
     }
 
@@ -310,18 +331,20 @@ public class solver3 {
             // Loop over each variable that could occur in clause
             for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
             {
+                System.out.println("hardLiterals["+String.valueOf(i)+"]: "+String.valueOf(hardLiterals[i]));
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (hardLiterals[i] > 0)
                 {
-                    sum = sum + ((vars.get(i)) ? 1 : 0);
+                    sum = sum + ((vars.get(hardLiterals[i]-1)) ? 1 : 0);
                 }
                 // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
                 else if (hardLiterals[i] < 0)
                 {
-                    sum = sum + ((vars.get(i)) ? 0 : 1);
+                    sum = sum + ((vars.get(-1*hardLiterals[i]-1)) ? 0 : 1);
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
+            System.out.println("Float: "+String.valueOf((sum - hardValues[clauseToCheck])));
             return (sum - hardValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
         else
@@ -332,12 +355,12 @@ public class solver3 {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (softLiterals[i] > 0)
                 {
-                    sum = sum + ((vars.get(i)) ? 1 : 0);
+                    sum = sum + ((vars.get(softLiterals[i]-1)) ? 1 : 0);
                 }
                 // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
                 else if (softLiterals[i] < 0)
                 {
-                    sum = sum + ((vars.get(i)) ? 0 : 1);
+                    sum = sum + ((vars.get(-1*softLiterals[i]-1)) ? 0 : 1);
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
@@ -366,12 +389,12 @@ public class solver3 {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (hardLiterals[i] > 0)
                 {
-                    sum = sum + ((vars.get(hardLiterals[i])) ? 1 : 0);
+                    sum = sum + ((vars.get(hardLiterals[i]-1)) ? 1 : 0);
                 }
                 // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
                 else if (hardLiterals[i] < 0)
                 {
-                    sum = sum + ((vars.get(hardLiterals[i])) ? 0 : 1);
+                    sum = sum + ((vars.get(hardLiterals[i]-1)) ? 0 : 1);
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
@@ -385,12 +408,12 @@ public class solver3 {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (softLiterals[i] > 0)
                 {
-                    sum = sum + ((vars.get(softLiterals[i])) ? 1 : 0);
+                    sum = sum + ((vars.get(softLiterals[i]-1)) ? 1 : 0);
                 }
                 // If a negative literal is mentioned, check if it is NOT set, and if not, add to total value on LHS of expression
                 else if (softLiterals[i] < 0)
                 {
-                    sum = sum + ((vars.get(softLiterals[i])) ? 0 : 1);
+                    sum = sum + ((vars.get(softLiterals[i]-1)) ? 0 : 1);
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
