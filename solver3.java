@@ -68,7 +68,7 @@ public class solver3 {
         // All hard clauses are SAT
         int[] inital_sol = new int[numVars];
         inital_sol = reader.getInitialSol();
-        for (int k=0; k < numVars; k++)
+        for (int k=1; k <= numVars; k++)
         {
             //if (inital_sol[k]==1) {vars.set(k-1);}
         }
@@ -83,9 +83,9 @@ public class solver3 {
         Random random = new Random();
 
         // Calculate float of hard clauses
-        for (int c=0; c < numHard; c++)
+        for (int c=1; c <= numHard; c++)
         {
-            hardFloats[c] = checkFloat(c, true);
+            hardFloats[c-1] = checkFloat(c, true);
         }
 
         System.out.println("Hard floats:");
@@ -98,14 +98,14 @@ public class solver3 {
         long curTotalCost = 0;
         unsat = new ArrayList<>();
         boolean sat;
-        for (int c=0; c < numSoft; c++)
+        for (int c=1; c <= numSoft; c++)
         {
-            softFloats[c] = checkFloat(c, false);
+            softFloats[c-1] = checkFloat(c, false);
             sat = checkSATFloat(c, false); // if current clause is unSAT, add to array
             if (!sat) 
             {
                 unsat.add(c); // add to unsat arraylist
-                curTotalCost += softCosts[c]; // Add to total cost if not SAT
+                curTotalCost += softCosts[c-1]; // Add to total cost if not SAT
             } 
         }
 
@@ -144,30 +144,30 @@ public class solver3 {
 
             // Update floats - ONLY AFFECTED CLAUSES
             // Calculate float of hard clauses
-            for (int c=0; c < numHard; c++)
+            for (int c=1; c <= numHard; c++)
             {
-                hardFloats[c] = checkFloat(c, true);
+                hardFloats[c-1] = checkFloat(c, true);
             }
             // Calculate float of soft clauses
-            for (int c=0; c < numSoft; c++)
+            for (int c=1; c <= numSoft; c++)
             {
-                softFloats[c] = checkFloat(c, false);
+                softFloats[c-1] = checkFloat(c, false);
             }
 
-            System.out.println("AFter float");
+            System.out.println("After float");
 
             // Calculate total cost of state and update unsat array - ONLY AFFECTED CLAUSES
             curTotalCost = 0;
             unsat.clear();
             sat = true;
-            for (int c=0; c < numSoft; c++)
+            for (int c=1; c <= numSoft; c++)
             {
                 // if current clause is unSAT, add to array
                 sat = checkSATFloat(c, false);
                 if (!sat) 
                 {
                     unsat.add(c);
-                    curTotalCost += softCosts[c]; // Add to total cost if not SAT
+                    curTotalCost += softCosts[c-1]; // Add to total cost if not SAT
                 }
             }
 
@@ -189,7 +189,7 @@ public class solver3 {
             unsat_arr = new int[unsat.size()];
             for (int i = 0; i < unsat.size(); i++) {unsat_arr[i] = unsat.get(i);}
             
-            System.out.println("Afer unsat conversion");
+            System.out.println("After unsat conversion");
 
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
@@ -203,7 +203,7 @@ public class solver3 {
                     sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
 
                     // If a hard clause will get broken, ensure this variable isn't picked
-                    if (hardFloats[hardClauses[i]*sign]==0)
+                    if (hardFloats[hardClauses[i]*sign-1]==0)
                     {
                         if (vars.get(bestFlip-1) && sign==1) {skip = true; break;}
                         else if (!vars.get(bestFlip-1) && sign==-1) {skip = true; break;}
@@ -225,8 +225,8 @@ public class solver3 {
                 System.out.println("After pickClause");
 
                 // Get literals involved in selected clause:
-                start = softIndices[curClause];
-                end = softIndices[curClause+1];
+                start = softIndices[curClause-1];
+                end = softIndices[curClause-1+1];
                 breakScores = new long[end-start];
                 makeScores = new long[end-start];
 
@@ -247,12 +247,12 @@ public class solver3 {
                     for (int j=softClauseIndices[v-1]; j < softClauseIndices[v-1+1]; j++) // check each soft clause affected by literal v
                     {
                         sign = (softClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
-                        if (softFloats[softClauses[j]*sign]==0) // check if break score will increase
+                        if (softFloats[softClauses[j]*sign-1]==0) // check if break score will increase
                         {
                             if (vars.get(v-1) && sign==1) {breakScores[i] = breakScores[i] + softCosts[softClauses[j]*sign];} // increase breakscore by cost of clause
                             else if (!vars.get(v-1) && sign==-1) {breakScores[i] = breakScores[i] + softCosts[softClauses[j]*sign];}
                         }
-                        else if (softFloats[softClauses[j]*sign]==-1) // check if make score will increase
+                        else if (softFloats[softClauses[j]*sign-1]==-1) // check if make score will increase
                         {
                             if (!vars.get(v-1) && sign==1) {makeScores[i] = makeScores[i] + softCosts[softClauses[j]*sign];} // increase makescore by cost of clause
                             else if (vars.get(v-1) && sign==-1) {makeScores[i] = makeScores[i] + softCosts[softClauses[j]*sign];}
@@ -265,7 +265,7 @@ public class solver3 {
                         sign = (hardClauses[j] < 0) ? -1 : 1; // check sign of literal in clause
                         System.out.println("hard sign fine");
                         // If a hard clause will get broken, ensure this variable isn't picked by making score the min
-                        if (hardFloats[hardClauses[j]*sign]==0)
+                        if (hardFloats[hardClauses[j]*sign-1]==0)
                         {
                             if (vars.get(v-1) && sign==1) {breakScores[i] = 0; makeScores[i]= Long.MIN_VALUE;}
                             else if (!vars.get(v-1) && sign==-1) {breakScores[i] = 0; makeScores[i]= Long.MIN_VALUE;}
@@ -310,7 +310,7 @@ public class solver3 {
         int[] costs = new int[unsat.length];
         for (int c=0; c < unsat.length; c++)
         {
-            costs[c] = softCosts[unsat[c]]; // get relevant weighted costs
+            costs[c] = softCosts[unsat[c]-1]; // get relevant weighted costs
             totalCost += costs[c]; // calculate sum of costs to normalize prob.
         }
 
@@ -329,7 +329,7 @@ public class solver3 {
         if (hard)
         {
             // Loop over each variable that could occur in clause
-            for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
+            for (int i=hardIndices[clauseToCheck-1]; i < hardIndices[clauseToCheck-1+1]; i++)
             {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (hardLiterals[i] > 0)
@@ -343,12 +343,12 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum - hardValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
+            return (sum - hardValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
         else
         {
             // Loop over each variable that could occur in clause
-            for (int i=softIndices[clauseToCheck]; i < softIndices[clauseToCheck+1]; i++)
+            for (int i=softIndices[clauseToCheck-1]; i < softIndices[clauseToCheck-1+1]; i++)
             {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (softLiterals[i] > 0)
@@ -362,7 +362,7 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum - softValues[clauseToCheck]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
+            return (sum - softValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
         
     }
@@ -370,8 +370,8 @@ public class solver3 {
     // This is a quicker checkSAT method that relies on the float of the array
     public static boolean checkSATFloat(int clauseToCheck, boolean hard)
     {
-        if (hard) {return (hardFloats[clauseToCheck] >= 0);}
-        else {return (softFloats[clauseToCheck] >= 0);}
+        if (hard) {return (hardFloats[clauseToCheck-1] >= 0);}
+        else {return (softFloats[clauseToCheck-1] >= 0);}
     }
 
     // First principles checkSAT
@@ -382,7 +382,7 @@ public class solver3 {
         if (hard)
         {
             // Loop over each variable that could occur in clause (all vars)
-            for (int i=hardIndices[clauseToCheck]; i < hardIndices[clauseToCheck+1]; i++)
+            for (int i=hardIndices[clauseToCheck-1]; i < hardIndices[clauseToCheck-1+1]; i++)
             {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (hardLiterals[i] > 0)
@@ -396,12 +396,12 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum >= hardValues[clauseToCheck]); //return whether the accumulated sum is geq the related value
+            return (sum >= hardValues[clauseToCheck-1]); //return whether the accumulated sum is geq the related value
         }
         else
         {
             // Loop over each variable that could occur in clause (all vars)
-            for (int i=softIndices[clauseToCheck]; i < softIndices[clauseToCheck+1]; i++)
+            for (int i=softIndices[clauseToCheck-1]; i < softIndices[clauseToCheck-1+1]; i++)
             {
                 // If a positive literal is mentioned, check if it is set, and if so, add to total value on LHS of expression
                 if (softLiterals[i] > 0)
@@ -415,7 +415,7 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum >= softValues[clauseToCheck]); //return whether the accumulated sum is geq the related value
+            return (sum >= softValues[clauseToCheck-1]); //return whether the accumulated sum is geq the related value
         }
     }    
 
@@ -423,6 +423,6 @@ public class solver3 {
     {   
         // If clause is satisfied, cost is 0, otherwise return associated cost
         if (hard) {return (checkSATFloat(clause, true)) ? 0 : hardCost;}
-        else {return (checkSATFloat(clause, false)) ? 0 : softCosts[clause];}        
+        else {return (checkSATFloat(clause, false)) ? 0 : softCosts[clause-1];}        
     }
 }
