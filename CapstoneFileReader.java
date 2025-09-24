@@ -325,15 +325,24 @@ public class CapstoneFileReader {
         // First, pass through file to determine number of '=' (exact) clauses,
         // and increment a counter to adjust the number of clauses later on
         int equalsClauseCounter = 0;
+        int clauseCheckCounter = 0;
 
         for (String line : lines) {
             line = line.trim();
-            if (line.isEmpty() || line.charAt(0) == 'c') continue; // Skip comments and blank lines
+            if (line.isEmpty() || line.charAt(0) == 'c' || line.charAt(0) == 'p') continue; // Skip comments, headers and blank lines
             
             if (line.indexOf(" = ") != -1) {
                 // If the line contains an exact clause, increment the clause counter
                 equalsClauseCounter++;
+                clauseCheckCounter++;
             }
+            else
+                clauseCheckCounter++; // Still a clause
+        }
+
+        if (clauseCheckCounter == 0){
+            System.err.println("No clauses found in file. Aborting...");
+            return false;
         }
 
         // Now process file normally.
@@ -352,6 +361,11 @@ public class CapstoneFileReader {
 
                     // Adjust number of clauses for input parsing later on
                     numClauses = Integer.parseInt(lineHolder[3]);
+
+                    if (clauseCheckCounter != numClauses){
+                        System.err.println("Error: Number of clauses specified in header (" + numClauses + ") does not match number of clauses found in file (" + clauseCheckCounter + ").");
+                        return false;
+                    }
 
                     numVariables =Integer.parseInt(lineHolder[2]);
                     hardCost = Integer.parseInt(lineHolder[4]);
@@ -640,14 +654,10 @@ public class CapstoneFileReader {
     private int[] InitialSolution() {
         initialSol = new int[numVariables];
         int[] softCosts = getSoftCosts();
-        for (int i = 0; i < numVariables; i++)
-            initialSol[i] = i+1;
-
-        System.out.println(Arrays.toString(initialSol));
 
         // Step 1) Assign variables greedily based on soft clause weights
         int k = 0; // Pointer for specific clauses for a variable
-        for (int i : initialSol){
+        for (int i = 1; i <= initialSol.length; i++){
             int weightIfTrue=0;
             int weightIfFalse=0;
 
@@ -709,7 +719,11 @@ public class CapstoneFileReader {
                               .toArray();
 
 
-        // Step 3) For all variables in hard clauses, calculate cost of flipping
+        if (numbers.length == 0) // All hard clauses are satisfied
+            return initialSol;
+
+
+        // Step 3) For all variables in unsatisfied hard clauses, calculate cost of flipping
         String hardVars = "";
         for (int i : numbers){
             for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
@@ -945,7 +959,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test2.txt", false);
+        reader.InitializeClauses("test3.txt", false);
     }
 
 }
