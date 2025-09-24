@@ -710,6 +710,10 @@ public class CapstoneFileReader {
                 
         }
         
+        if (unsatStr.length() == 0) // All hard clauses are satisfied
+            return initialSol;
+
+
         numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
                               .mapToInt(Integer::parseInt)
                               .toArray();
@@ -718,9 +722,6 @@ public class CapstoneFileReader {
                               .mapToInt(Integer::parseInt)
                               .toArray();
 
-
-        if (numbers.length == 0) // All hard clauses are satisfied
-            return initialSol;
 
 
         // Step 3) For all variables in unsatisfied hard clauses, calculate cost of flipping
@@ -959,7 +960,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test3.txt", false);
+        reader.InitializeClauses("test3.wcard", false);
     }
 
 }
