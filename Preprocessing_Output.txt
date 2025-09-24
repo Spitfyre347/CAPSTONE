@@ -1,38 +1,38 @@
 CapstoneFileReader - Parsed Input Results 
 ------------------------------------------
-numVariables = 5
-numClauses = 6
-hardCost = 100
-costs = [99, 12, 1, 3, 3, 100]
-literals = [4, 5, 1, 2, 3, -2, -3, -4, 1, 2, 3, 4, -1, -2, -3, -4, -1, -2, -3, -4, -5]
-values = [1, 1, 3, 1, 3, 4]
-indices = [0, 2, 5, 8, 12, 16, 21]
-(clauses = [45>=1 (99), 123>=1 (12), -2-3-4>=3 (1), 1234>=1 (3), -1-2-3-4>=3 (3), -1-2-3-4-5>=4 (100)])
+numVariables = 6
+numClauses = 9
+hardCost = 200
+costs = [0, 10, 30, 40, 15, 25, 25, 150, 200]
+literals = [5, -6, 1, 2, 3, -2, -3, 4, -1, 4, 6, 2, 3, 5, 6, -2, -3, -5, -6, -1, -2, -3, -4, -5, -6, -1, -2, -3, -4, -5, -6]
+values = [0, 1, 1, 1, 2, 1, 3, 4, 4]
+indices = [0, 0, 2, 5, 8, 11, 15, 19, 25, 31]
+(clauses = [null, 5-6>=1 (10), 123>=1 (30), -2-34>=1 (40), -146>=2 (15), 2356>=1 (25), -2-3-5-6>=3 (25), -1-2-3-4-5-6>=4 (150), -1-2-3-4-5-6>=4 (200)])
 
-Soft Costs: [99, 12, 1, 3, 3]
-Soft Values: [1, 1, 3, 1, 3]
+Soft Costs: [0, 10, 30, 40, 15, 25, 25, 150]
+Soft Values: [0, 1, 1, 1, 2, 1, 3, 4]
 Hard Values: [4]
-(Outer Soft Indices: [0, 2, 5, 8, 12])
-(Outer Hard Indices: [16])
-Soft Literals: [4, 5, 1, 2, 3, -2, -3, -4, 1, 2, 3, 4, -1, -2, -3, -4]
-Hard Literals: [-1, -2, -3, -4, -5]
-Soft Indices: [0, 2, 5, 8, 12, 16]
-Hard Indices: [0, 5]
+(Outer Soft Indices: [0, 0, 2, 5, 8, 11, 15, 19])
+(Outer Hard Indices: [25])
+Soft Literals: [5, -6, 1, 2, 3, -2, -3, 4, -1, 4, 6, 2, 3, 5, 6, -2, -3, -5, -6, -1, -2, -3, -4, -5, -6]
+Hard Literals: [-1, -2, -3, -4, -5, -6]
+Soft Indices: [0, 0, 2, 5, 8, 11, 15, 19, 25]
+Hard Indices: [0, 6]
 
-Raw Soft Clauses Array: [[0, 2, 0, 4, -5], [0, 2, -3, 4, -5], [0, 2, -3, 4, -5], [1, 0, -3, 4, -5], [1, 0, 0, 0, 0]]
-Soft Clauses by Var: [2, 4, -5, 2, -3, 4, -5, 2, -3, 4, -5, 1, -3, 4, -5, 1]
-Soft Clause Indices by Var: [0, 3, 7, 11, 15, 16]
-Raw Hard Clauses Array: [[-1], [-1], [-1], [-1], [-1]]
-Hard Clauses by Var: [-1, -1, -1, -1, -1]
-Hard Clause Indices by Var: [0, 1, 2, 3, 4, 5]
+Raw Soft Clauses Array: [[-1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0, 0, 0], [-1, 0, 0, 0, 0, 0, 0, 0]]
+Soft Clauses by Var: [-1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Soft Clause Indices by Var: [0, 1, 2, 3, 4, 5, 25]
+Raw Hard Clauses Array: [[-1], [-1], [-1], [-1], [-1], [-1]]
+Hard Clauses by Var: [-1, -1, -1, -1, -1, -1]
+Hard Clause Indices by Var: [0, 1, 2, 3, 4, 5, 6]
 
-First Initial Soln: [1, 1, 1, 1, 1]
-First Soft Cost: 103
+First Initial Soln: [1, 1, 1, 1, 1, 1]
+First Soft Cost: 255
 Unsatisfied Hard Clauses: [0]
 Unsatisfied Floats: [4]
-Variables in unsatisfied hard clauses: [1, 2, 3, 4, 5]
-Cost of flipping each variable: [0, 0, 0, 0, 0]
-Initial Soln: [-1, -1, -1, -1, 1]
-Soft Cost: 103
+Variables in unsatisfied hard clauses: [1, 2, 3, 5, 6, 4]
+Cost of flipping each variable: [0, 0, 0, -10, -15, -55]
+Initial Soln: [-1, -1, -1, 1, -1, 1]
+Soft Cost: 255
 
-Elapsed time: 82 ms
+Elapsed time: 97 ms
