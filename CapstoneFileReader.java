@@ -960,7 +960,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test3.wcard", false);
+        reader.InitializeClauses("test2.txt", false);
     }
 
 }
