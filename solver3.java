@@ -1,6 +1,7 @@
 import java.util.BitSet;
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.stream.IntStream;
 
 public class solver3 {
 
@@ -37,7 +38,7 @@ public class solver3 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", false);
+        reader.InitializeClauses("samples/small/test3.wcard", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -114,6 +115,16 @@ public class solver3 {
             } 
         }
 
+        // DEBUG:
+        //ArrayList<Integer> debug_softFloats = new ArrayList<>();
+        //IntStream.of(softFloats).forEach(debug_softFloats::add);
+        //System.out.println("Soft Floats: " + debug_softFloats.toString());
+
+        //ArrayList<Integer> debug_softCosts = new ArrayList<>();
+        //IntStream.of(softCosts).forEach(debug_softCosts::add);
+        //System.out.println("Soft Costs: " + debug_softCosts.toString());
+
+        // Ouput initial cost
         System.out.println("Initial cost: "+String.valueOf(curTotalCost));
 
         long bestCost = Long.MAX_VALUE;
@@ -316,14 +327,14 @@ public class solver3 {
         System.out.println("Final Best Cost: " + String.valueOf(bestCost));
 
         // Create string output
-        //String output = "(";
-        //for (int k=0; k < numVars-1; k++)
-        //{
-        //    output = output + ((bestAssignment.get(k)) ? "1" : "0") + ", ";
-        //}
-        //output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
+        String output = "(";
+        for (int k=0; k < numVars-1; k++)
+        {
+            output = output + ((bestAssignment.get(k)) ? "1" : "0") + ", ";
+        }
+        output = output + ((bestAssignment.get(numVars-1)) ? "1" : "0") + ")";
 
-        //System.out.println("Corresponding Assignment: " + output);
+        System.out.println("Corresponding Assignment: " + output);
     }
 
     public static int pickClause(int[] unsat, Random random)
@@ -348,6 +359,7 @@ public class solver3 {
     public static int checkFloat(int clauseToCheck, boolean hard)
     {
         int sum = 0;
+        int r = 0;
 
         if (hard)
         {
@@ -366,7 +378,7 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum - hardValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
+            r = (sum - hardValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
         else
         {
@@ -385,9 +397,10 @@ public class solver3 {
                 }
                 // If the literal is 0, don't consider it (no "else" needed)
             }
-            return (sum - softValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
+            r = (sum - softValues[clauseToCheck-1]); //return the float, i.e. sum - cost of clause (as we require sum to be >= cost for clause to be SAT)
         }
-        
+
+        return r;        
     }
 
     // This is a quicker checkSAT method that relies on the float of the array
