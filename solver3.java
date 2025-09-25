@@ -30,6 +30,8 @@ public class solver3 {
     static int[] softClauses; // variables expressed ito the soft clauses they are found in
     static int[] hardClauseIndices; // indices to locate hard clauses containing a specific variable
     static int[] hardClauses; // variables expressed ito the hard clauses they are found in
+    static int[] affectedSoftClauses; // subset of soft clauses that need to be updated after a flip
+    static int[] affectedHardClauses; // subset of hard clauses that need to be updated after a flip
 
     public static void setup()
     {
@@ -60,6 +62,8 @@ public class solver3 {
         numHard = hardValues.length;
         softFloats = new int[softValues.length];
         hardFloats = new int[hardValues.length];
+        affectedSoftClauses = new int[numSoft];
+        affectedHardClauses = new int[numHard];
 
         // Create Boolean variables
         vars = new BitSet(numVars);
@@ -68,11 +72,10 @@ public class solver3 {
         // All hard clauses are SAT
         int[] inital_sol = new int[numVars];
         inital_sol = reader.getInitialSol();
-        for (int k=1; k <= numVars; k++)
+        for (int k=0; k < numVars; k++)
         {
-            //if (inital_sol[k]==1) {vars.set(k-1);}
+            if (inital_sol[k]==1) {vars.set(k);}
         }
-        vars.clear();
     }
 
     
@@ -86,6 +89,11 @@ public class solver3 {
         for (int c=1; c <= numHard; c++)
         {
             hardFloats[c-1] = checkFloat(c, true);
+            if (hardFloats[c-1]<0)
+            {
+                System.err.println("HARD CLAUSES NOT SATISFIED ON INITIAL ASSIGNMENT");
+                System.exit(0);
+            }
         }
 
         // Calculate:
@@ -116,8 +124,7 @@ public class solver3 {
         long[] breakScores;
 
         // Main loop:
-        int t = 0;
-        int v = 0;
+        int t = 0, v = 0, c = 0;
         final double RANDOM_CHANCE = 0.01;
         int curClause = -1;
         int start, end;
@@ -125,7 +132,8 @@ public class solver3 {
         // For score calculation
         long bestScore = 0;
         int bestFlip = -1;
-        int sign, vsign = 1;
+        int sign = 1, vsign = 1;
+        int ascIdx = 0, ahcIdx = 0;
         while (true)
         {
             // Algorithm:
@@ -140,13 +148,17 @@ public class solver3 {
 
             // Update floats - ONLY AFFECTED CLAUSES
             // Calculate float of hard clauses
-            for (int c=1; c <= numHard; c++)
+            for (int i=0; i < numHard; i++)
             {
+                c = affectedHardClauses[i];
+                if (c==0) {break;} // If we have gone through all affected hard clauses, we are done
                 hardFloats[c-1] = checkFloat(c, true);
             }
             // Calculate float of soft clauses
-            for (int c=1; c <= numSoft; c++)
+            for (int i=0; i < numSoft; i++)
             {
+                c = affectedSoftClauses[i];
+                if (c==0) {break;} // If we have gone through all affected soft clauses, we are done
                 softFloats[c-1] = checkFloat(c, false);
             }
 
@@ -154,15 +166,24 @@ public class solver3 {
             curTotalCost = 0;
             unsat.clear();
             sat = true;
-            for (int c=1; c <= numSoft; c++)
+            for (int cl=1; cl <= numSoft; cl++)
             {
                 // if current clause is unSAT, add to array
-                sat = checkSATFloat(c, false);
+                sat = checkSATFloat(cl, false);
                 if (!sat) 
                 {
-                    unsat.add(c);
-                    curTotalCost += softCosts[c-1]; // Add to total cost if not SAT
+                    unsat.add(cl);
+                    curTotalCost += softCosts[cl-1]; // Add to total cost if not SAT
                 }
+            }
+
+            // Exit if cost is 0
+            if (curTotalCost==0)
+            {
+                bestCost = curTotalCost;
+                bestAssignment = (BitSet)vars.clone();
+                System.out.println("Solution with cost 0 found.");
+                break;
             }
 
             // If current assignment is the best so far, save it
@@ -180,6 +201,12 @@ public class solver3 {
             // Convert unsat ArrayList into int[]
             unsat_arr = new int[unsat.size()];
             for (int i = 0; i < unsat.size(); i++) {unsat_arr[i] = unsat.get(i);}
+
+            // Reset affected clauses arrays and indices
+            affectedSoftClauses = new int[numSoft]; 
+            affectedHardClauses = new int[numHard]; 
+            ascIdx = 0;
+            ahcIdx = 0;
 
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
@@ -199,8 +226,7 @@ public class solver3 {
                     }
                 }
 
-                if (skip) {continue;}
-            
+                if (skip) {continue;}            
             }
             // Otherwise take greedy flip
             else 
@@ -271,6 +297,20 @@ public class solver3 {
 
             // Flip selected variable
             vars.flip(bestFlip-1);
+
+            // Update affected soft clauses:
+            for (int i = softClauseIndices[bestFlip-1]; i < softClauseIndices[bestFlip-1+1]; i++)
+            {
+                sign = (softClauses[i] < 0) ? -1 : 1; // check sign of literal
+                affectedSoftClauses[ascIdx++] = softClauses[i]*sign; // add |clausenum| to list
+            }
+
+            // Update affected hard clauses:
+            for (int i = hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
+            {
+                sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
+                affectedHardClauses[ahcIdx++] = hardClauses[i]*sign; // add |clausenum| to list
+            }
         }
 
         System.out.println("Final Best Cost: " + String.valueOf(bestCost));

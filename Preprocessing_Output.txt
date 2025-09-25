@@ -27,12 +27,12 @@ Hard Clauses by Var: [1, -2, -1, -2, -1, -2]
 Hard Clause Indices by Var: [0, 2, 4, 6, 6]
 
 First Initial Soln: [-1, 1, 1, -1]
-First Soft Cost: 65
+First Soft Cost: 0
 Unsatisfied Hard Clauses: [0]
 Unsatisfied Floats: [1]
 Variables in unsatisfied hard clauses: [3, 1, 2]
-Cost of flipping each variable: [0, -15, -20]
+Cost of flipping each variable: [0, 15, 20]
 Initial Soln: [-1, 1, -1, -1]
-Soft Cost: 65
+Soft Cost: 0
 
-Elapsed time: 96 ms
+Elapsed time: 66 ms

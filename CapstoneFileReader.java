@@ -1,9 +1,9 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.BufferedReader;
 import java.util.Arrays;
 
 public class CapstoneFileReader {
@@ -315,6 +315,11 @@ public class CapstoneFileReader {
             return false;
         }
 
+        if(lines.length ==0){
+            System.out.println("Error detected - file is empty");
+            return false;
+        }
+
         // Initialize variables
         boolean initialised = false; // Flag to check if the header line has been processed
         hardCost = -1; // Hard cost for the clauses, as specified in the header line
@@ -359,6 +364,19 @@ public class CapstoneFileReader {
                 if(line.charAt(0) == 'p'){
                     lineHolder = line.split("\\s+");
 
+                    if (lineHolder.length != 5){        
+                        System.out.println("Invalid line detected - Header must contain 5 arguments (Header identifier, format, numVariables, numClauses, hardCost)");
+                        System.out.println("Line: " + line);
+                        return false;
+
+                    }
+
+                    if (!(isInteger(lineHolder[2]) && isInteger(lineHolder[3]) && isInteger(lineHolder[4]))) {
+                        System.out.println("Invalid line detected - Header number of variables, number of clauses or hard cost is not an integer value");
+                        System.out.println("Line: " + line);
+                        return false;
+                    }
+
                     // Adjust number of clauses for input parsing later on
                     numClauses = Integer.parseInt(lineHolder[3]);
 
@@ -370,6 +388,11 @@ public class CapstoneFileReader {
                     numVariables =Integer.parseInt(lineHolder[2]);
                     hardCost = Integer.parseInt(lineHolder[4]);
 
+                     if (numVariables <= 0 || numClauses < 0 || hardCost <= 0) {
+                        System.out.println("Invalid line detected - numVariables must be >0, numclauses must be >=0, hardCost must be > 0");
+                        System.out.println("Line: " + line);
+                        return false;
+                    }
                     // Initialize all arrays
                     costs = new int[numClauses + equalsClauseCounter];
                     literals = new int[(numClauses + equalsClauseCounter) * numVariables];
@@ -402,18 +425,25 @@ public class CapstoneFileReader {
 
             // Ensure clause begins with an integer (cost)
             int num;
-            try {
-                num = Integer.parseInt(lineHolder[0]);
-            } catch (Exception e){
-                System.out.println("Invalid line detected - Line does not fit format of clause, comment or header");
+             if(!isInteger(lineHolder[0])){
+                System.out.println("Invalid line detected - Clause does not begin with a number");
                 System.out.println("Line: " + line);
-                e.printStackTrace();
                 return false;
             }
 
+            num = Integer.parseInt(lineHolder[0]);
+
             // Ensure cost is positive
-            if(num < 0){
-                System.out.println("Invalid line detected - A cost may not be negative");
+             if(num < 0 || num > hardCost){
+                System.out.println("Invalid line detected - A cost may not be negative or exceed the hard cost");
+                System.out.println("Line: " + line);
+                System.out.println("Hard cost: " + Integer.toString(hardCost));
+                return false;
+            }
+
+
+             if (!isInteger(lineHolder[lineHolder.length-1]) || Integer.parseInt(lineHolder[lineHolder.length-1]) > numVariables || Integer.parseInt(lineHolder[lineHolder.length-1]) < 0) {
+                System.out.println("Invalid line detected - A clause is terminating in something other than an Integer or the k value is too large");
                 System.out.println("Line: " + line);
                 return false;
             }
@@ -425,6 +455,13 @@ public class CapstoneFileReader {
             switch (lineHolder[numArgs-2]) {
                 case ">=":
                     // Format is fine as is
+
+                    if (Integer.parseInt(lineHolder[lineHolder.length-1]) < 1) {
+                        System.out.println("Invalid line detected - k value must be >=1 and <= number of clauses for a >= clause");
+                        System.out.println("Line: " + line);
+                        return false;
+                        
+                    }
                     clauses[clauseCounter] = this.arrToStr(lineHolder);
 
                     populateArrays(lineHolder, clauseCounter, numVariables);
@@ -473,6 +510,11 @@ public class CapstoneFileReader {
                     break;
             }
             clauseCounter++;
+        }
+
+        if (!initialised) {
+            System.out.println("Error detected - no header line found");
+            return false;
         }
 
         // If this point is reached, execution is successful.
@@ -755,7 +797,7 @@ public class CapstoneFileReader {
         // Sort variables by cost of flipping
         for (int i = 0; i < flipCosts.length - 1; i++) {
             for (int j = i + 1; j < flipCosts.length; j++) {
-                if (flipCosts[i] < flipCosts[j]) {
+                if (flipCosts[i] > flipCosts[j]) {
                     int tempVar = flipCosts[i];
                     flipCosts[i] = flipCosts[j];
                     flipCosts[j] = tempVar;
@@ -824,7 +866,7 @@ public class CapstoneFileReader {
                         val++;
                         
             }
-            if (val >= softValues[i])
+            if (val < softValues[i])
                 curCost += softCosts[i];
         }
 
@@ -896,6 +938,17 @@ public class CapstoneFileReader {
         for (int i = 1; i < len -2 ; i++){
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
         }
+    }
+
+     public boolean isInteger(String potentialNumber){
+
+        try {
+            int number = Integer.parseInt(potentialNumber);
+            return true;    
+        } catch (Exception e) {
+            return false;
+        }
+        
     }
     
     public String toString(){
