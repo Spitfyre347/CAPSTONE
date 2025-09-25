@@ -1,7 +1,7 @@
 import random
 
-n_vars = 12
-n_constraints = 400
+n_vars = 25
+n_constraints = 10000
 top = 100  # weight for hard constraints
 
 operators = [">=", "<=", "="]
