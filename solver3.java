@@ -38,7 +38,7 @@ public class solver3 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("samples/topk/power-distribution_1_3.wcnf", false); 
+        reader.InitializeClauses("unsat_soft.wcard", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
