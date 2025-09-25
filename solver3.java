@@ -38,7 +38,7 @@ public class solver3 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("unsat_soft.wcard", false); 
+        reader.InitializeClauses("samples/small/test3.txt", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -78,7 +78,6 @@ public class solver3 {
             if (inital_sol[k]==1) {vars.set(k);}
         }
     }
-
     
     public static void main(String[] args) 
     {
@@ -150,7 +149,7 @@ public class solver3 {
             // Algorithm:
             // update floats - ONLY AFFECTED CLAUSES
             // calculate cost and update best assignment - ONLY AFFECTED CLAUSES
-            // pick unsat soft clause, with prob weighted by dynamic cost
+            // pick unsat soft clause, with prob weighted by cost
             // calculate break and make costs for variables in clause
             // outlaw any flips that violate hard clauses
             // flip:
@@ -171,20 +170,20 @@ public class solver3 {
                 c = affectedSoftClauses[i];
                 if (c==0) {break;} // If we have gone through all affected soft clauses, we are done
                 softFloats[c-1] = checkFloat(c, false);
-            }
 
-            // Calculate total cost of state and update unsat array - ONLY AFFECTED CLAUSES
-            curTotalCost = 0;
-            unsat.clear();
-            sat = true;
-            for (int cl=1; cl <= numSoft; cl++)
-            {
-                // if current clause is unSAT, add to array
-                sat = checkSATFloat(cl, false);
-                if (!sat) 
+                // Also update unsat array and total cost
+                if (softFloats[c-1] >= 0 && unsat.contains(c)) 
                 {
-                    unsat.add(cl);
-                    curTotalCost += softCosts[cl-1]; // Add to total cost if not SAT
+                    // remove if was unSAT and is now SAT
+                    unsat.remove((Integer)c);
+                    curTotalCost -= softCosts[c-1];
+                } 
+
+                if (softFloats[c-1] < 0 && !unsat.contains(c)) 
+                {
+                    // add if was SAT and is now unSAT
+                    unsat.add(c);
+                    curTotalCost += softCosts[c-1];
                 }
             }
 
