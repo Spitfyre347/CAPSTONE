@@ -732,143 +732,91 @@ public class CapstoneFileReader {
 
         FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
-        // Step 2) Generate list of unsatisfied hard clauses, and their floats
-        int[] hardLits = getHardLiterals();
-        int[] hardValues = getHardValues();
-        String unsatStrs[];
-        int val = 0;
-        int curVar;
+        // Attempt to satisfy all hard clauses
+        int runs = 5; // Number of iterations to attempt to satisfy all hard clauses
+        for (int r = 0; r < runs; r++){
+            // Step 2) Generate list of unsatisfied hard clauses, and their floats
+            int[] hardLits = getHardLiterals();
+            int[] hardValues = getHardValues();
+            String unsatStrs[];
 
-        unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
-        String unsatStr = unsatStrs[0].substring(0, unsatStrs[0].length()); // Remove extra separator
-        String floats = unsatStrs[1].substring(0, unsatStrs[1].length()); // Remove extra separator
+            unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
+            String unsatStr = unsatStrs[0].substring(0, unsatStrs[0].length()); // Remove extra separator
+            String floats = unsatStrs[1].substring(0, unsatStrs[1].length()); // Remove extra separator
 
-        
-        if (unsatStr.length() == 0) // All hard clauses are satisfied
-            return initialSol;
-
-
-        // Generate  array of unsatisfied hard clauses
-        numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                              .mapToInt(Integer::parseInt)
-                              .toArray();
-
-        floatsArr = Arrays.stream((floats.substring(0, floats.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                              .mapToInt(Integer::parseInt)
-                              .toArray();
+            
+            if (unsatStr.length() == 0) // All hard clauses are satisfied
+                return initialSol;
 
 
-        // Step 3) Find the unsatisfied hard clauses with the lowest float
-        int minFloat = Integer.MAX_VALUE;
-        int minInd = 0;
-        for (int i = 0; i < floatsArr.length; i++){
-            if (floatsArr[i] < minFloat)
-                minInd = i;
-        }
+            // Otherwise, generate an array of unsatisfied hard clauses
+            numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
+                                .mapToInt(Integer::parseInt)
+                                .toArray();
 
-        if (debug){
-            System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
-            System.out.println("Unsatisfied clauses " + Arrays.toString(numbers));
-            System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
-        }
-        
+            floatsArr = Arrays.stream((floats.substring(0, floats.length() - 1)).split(" ")) // Remove extra separator at end, then split
+                                .mapToInt(Integer::parseInt)
+                                .toArray();
 
-        // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
-        int varCount = hardIndices[numbers[minInd]+1] - hardIndices[numbers[minInd]];
-        int[][] hardClauseCounts = new int[varCount][2];
 
-        for (int i = 0; i < varCount; i++){
-            int myVar = hardLits[hardIndices[numbers[minInd]] + i]; // Variable 
-            System.out.println("Considering flipping variable " + (myVar));
-            // Count occurrences in all hard clauses
-            hardClauseCounts[i][0] = countOccurrences(myVar, hardLits, 0, hardLits.length);
-            hardClauseCounts[i][1] = countOccurrences((myVar*-1), hardLits, 0, hardLits.length);
-        }
-        System.out.println(Arrays.deepToString(hardClauseCounts));
-
-        //int maxFlips = -1;
-        //int maxInd = 0;
-        //for (int i = 0; i < hardClauseCounts.length; i++){
-        //    if (hardClauseCounts[i] > maxFlips)
-        //        maxInd = i;
-       //}
-        //System.out.println("Flipping variable " + (hardLits[hardIndices[numbers[minInd]] + maxInd]) + " which helps " + hardClauseCounts[maxInd] + " clauses");
-        // Flip variable with best hard count
-        //hardLits[hardIndices[numbers[minInd]] + i]
-
-        //initialSol[ maxInd]]]
-        
-
-        /*String hardVars = "";
-        for (int i : numbers){
-            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                curVar = hardLits[hardIndices[i]+j];
-                if (!hardVars.contains(String.valueOf(Math.abs(curVar))))
-                    hardVars += String.valueOf(Math.abs(curVar)) + " ";
+            // Step 3) Find the unsatisfied hard clauses with the lowest float
+            int minFloat = Integer.MAX_VALUE;
+            int minInd = 0;
+            for (int i = 0; i < floatsArr.length; i++){
+                if (floatsArr[i] < minFloat)
+                    minInd = i;
             }
-        }
-        hardVarArr = Arrays.stream((hardVars.substring(0, hardVars.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                                    .mapToInt(Integer::parseInt)
-                                    .toArray();
 
-
-        flipCosts = new int[hardVarArr.length];
-        for (int i = 0; i < hardVarArr.length; i++)
-        {
-                    
-            int unflippedCost = calcCost(initialSol);
-            initialSol[hardVarArr[i]-1] *= -1; // Flip variable
-            int flippedCost = calcCost(initialSol);
-            initialSol[hardVarArr[i]-1] *= -1; // Flip back
-
-            flipCosts[i] = flippedCost - unflippedCost;
-        }
-
-        // Step 3) Satisfy all hard clauses by flipping variables with minimal cost increases
-
-        // Sort variables by cost of flipping
-        for (int i = 0; i < flipCosts.length - 1; i++) {
-            for (int j = i + 1; j < flipCosts.length; j++) {
-                if (flipCosts[i] > flipCosts[j]) {
-                    int tempVar = flipCosts[i];
-                    flipCosts[i] = flipCosts[j];
-                    flipCosts[j] = tempVar;
-
-                    // swap corresponding variables
-                    tempVar = hardVarArr[i];
-                    hardVarArr[i] = hardVarArr[j];
-                    hardVarArr[j] = tempVar;
-                }
+            if (debug){
+                System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
+                System.out.println("Unsatisfied clauses " + Arrays.toString(numbers));
+                System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
             }
-        }
+            
 
-        // Now, flip variables until all hard clauses are satisfied
-        boolean done = false;
-        int ind = 0;
-        while (!done)
-        {
-            initialSol[hardVarArr[ind++]-1] *= -1; // Flip variable with best break cost
+            // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
+            int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
+            System.out.println(Arrays.toString(varsInClause));
 
-            // Check if all hard clauses are satisfied, and flip next variable if not
-            int unsatClauses = 0;
-            for (int i = 0; i < hardIndices.length-1; i++){
-                // Check if i-th clause is satisfied   
-                val = 0;         
-                for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                    // Looping through every variable in the clause, check if it is satisfied.
-                    curVar = hardLits[hardIndices[i]+j];
 
-                    for (int l = 0; l < initialSol.length; l++)
-                        if ((l+1)*initialSol[l] == curVar)
-                            val++;
-                }
-                if (val < hardValues[i]){
-                    unsatClauses++;
-                }
+            int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
+
+            for (int i = 0; i < varsInClause.length; i++){
+                int myVar = varsInClause[i]; // Variable 
+                System.out.println("Considering flipping variable " + (myVar));
+                // Count occurrences in all hard clauses
+                flipDifference[i][0] = myVar; // Store variable
+                flipDifference[i][1] = countOccurrences(-myVar, hardLits, 0, hardLits.length) - countOccurrences(myVar, hardLits, 0, hardLits.length);
             }
-            if (unsatClauses == 0)
-                done = true;
-        }*/
+            if (debug)
+                System.out.println("Hard clause difference counts: " + Arrays.deepToString(flipDifference));
+
+            // Find variable with best hard clause count
+            int maxFlips = Integer.MIN_VALUE;
+            int inds = 0;
+            for (int i = 0; i < flipDifference.length; i++){
+                if (flipDifference[i][1] > maxFlips){
+                    maxFlips = flipDifference[i][1];
+                    inds = i;
+                }    
+            }
+            
+            if (maxFlips <= 0){
+                if (debug)
+                    System.out.println("No beneficial flips found, defaulting to first variable in clause");
+                inds = 0; // Default to first variable in clause if no beneficial flips found
+            }
+
+            if (debug)
+                System.out.println("Flipping variable " + (flipDifference[inds][0]) + " which helps " + flipDifference[inds][1] + " clauses");
+
+            // Flip variable with best hard count
+            initialSol[Math.abs(flipDifference[inds][0])-1] *= -1; // Flip variable
+
+            if (debug)
+                System.out.println("New initial solution: " + Arrays.toString(initialSol));
+
+        }
         
         return initialSol; 
     }
