@@ -696,6 +696,8 @@ public class CapstoneFileReader {
     private int[] InitialSolution(boolean softOptimize) {
         initialSol = new int[numVariables];
 
+        for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
+
         if (softOptimize){
             int[] softCosts = getSoftCosts();
 
@@ -745,9 +747,11 @@ public class CapstoneFileReader {
                 // Looping through every variable in the clause, check if it is satisfied.
                 curVar = hardLits[hardIndices[i]+j];
 
-                for (int l = 0; l < initialSol.length; l++)
-                    if ((l+1)*initialSol[l] == curVar)
+                for (int l = 1; l <= initialSol.length; l++){
+                    if ((l)*initialSol[l-1] == curVar)
                         val++;
+                }
+                    
             }
             if (val < hardValues[i]){
                 unsatStr += i + " ";
@@ -760,6 +764,7 @@ public class CapstoneFileReader {
             return initialSol;
 
 
+        // Generate hard clauses unsatisfied array
         numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
                               .mapToInt(Integer::parseInt)
                               .toArray();
