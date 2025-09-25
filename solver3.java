@@ -1,7 +1,6 @@
 import java.util.BitSet;
 import java.util.Random;
 import java.util.ArrayList;
-import java.util.stream.IntStream;
 
 public class solver3 {
 
@@ -38,7 +37,7 @@ public class solver3 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("samples/small/test3.txt", false); 
+        reader.InitializeClauses("sample.wcard", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
