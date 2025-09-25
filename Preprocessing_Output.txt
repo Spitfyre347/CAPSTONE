@@ -1,5 +1,6 @@
 CapstoneFileReader - Parsed Input Results 
 ------------------------------------------
+<<<<<<< HEAD
 numVariables = 6
 numClauses = 8
 hardCost = 200
@@ -36,3 +37,41 @@ Initial Soln: [-1, -1, -1, -1, -1, -1]
 Soft Cost: 70
 
 Elapsed time: 60 ms
+=======
+numVariables = 5
+numClauses = 10
+hardCost = 50
+costs = [10, 15, 20, 30, 50, 50, 50, 50, 50, 50]
+literals = [1, -2, -1, 3, -3, 4, -4, 5, 3, 5, 1, 2, -5, -2, -3, 4, 1, 4, 5, 2, 2, 4, 1, 1, 2, 3]
+values = [1, 1, 1, 1, 1, 1, 1, 2, 1, 1]
+indices = [0, 2, 4, 6, 8, 10, 13, 16, 19, 22, 26]
+(clauses = [1-2>=1 (10), -13>=1 (15), -34>=1 (20), -45>=1 (30), 35>=1 (50), 12-5>=1 (50), -2-34>=1 (50), 145>=2 (50), 224>=1 (50), 1123>=1 (50)])
+
+Soft Costs: [10, 15, 20, 30]
+Soft Values: [1, 1, 1, 1]
+Hard Values: [1, 1, 1, 2, 1, 1]
+(Outer Soft Indices: [0, 2, 4, 6])
+(Outer Hard Indices: [8, 10, 13, 16, 19, 22])
+Soft Literals: [1, -2, -1, 3, -3, 4, -4, 5]
+Hard Literals: [3, 5, 1, 2, -5, -2, -3, 4, 1, 4, 5, 2, 2, 4, 1, 1, 2, 3]
+Soft Indices: [0, 2, 4, 6, 8]
+Hard Indices: [0, 2, 5, 8, 11, 14, 18]
+
+Raw Soft Clauses Array: [[1, -2, 0, 0], [-1, 0, 0, 0], [0, 2, -3, 0], [0, 0, 3, -4], [0, 0, 0, 4]]
+Soft Clauses by Var: [1, -2, -1, 2, -3, 3, -4, 4]
+Soft Clause Indices by Var: [0, 2, 3, 5, 7, 8]
+Raw Hard Clauses Array: [[0, 2, 0, 4, 0, 6], [0, 2, -3, 0, 5, 6], [1, 0, -3, 0, 0, 6], [0, 0, 3, 4, 5, 0], [1, -2, 0, 4, 0, 0]]
+Hard Clauses by Var: [2, 4, 6, 2, -3, 5, 6, 1, -3, 6, 3, 4, 5, 1, -2, 4, 0, 0]
+Hard Clause Indices by Var: [0, 3, 7, 10, 13, 18]
+
+First Initial Soln: [-1, -1, -1, -1, -1]
+First Soft Cost: 30
+Unsatisfied Hard Clauses: [3]
+Unsatisfied Floats: [1]
+Variables in unsatisfied hard clauses: null
+Cost of flipping each variable: null
+Initial Soln: [1, -1, 1, 1, -1]
+Soft Cost: 30
+
+Elapsed time: 113 ms
+>>>>>>> 715961433ed779b6e810d163ef13e31deff05024
