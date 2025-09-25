@@ -286,7 +286,7 @@ public class CapstoneFileReader {
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
-        initialSol = InitialSolution();
+        initialSol = InitialSolution(false);
         StopTimer();
 
         if (debug){
@@ -693,37 +693,41 @@ public class CapstoneFileReader {
 
     // Find initial solution (greedy), satisfying all hard clauses if possible. 
     // Returns assignment as int[numVariables] with values 0 or 1.
-    private int[] InitialSolution() {
+    private int[] InitialSolution(boolean softOptimize) {
         initialSol = new int[numVariables];
-        int[] softCosts = getSoftCosts();
 
-        // Step 1) Assign variables greedily based on soft clause weights
-        int k = 0; // Pointer for specific clauses for a variable
-        for (int i = 1; i <= initialSol.length; i++){
-            int weightIfTrue=0;
-            int weightIfFalse=0;
+        if (softOptimize){
+            int[] softCosts = getSoftCosts();
 
-            while (k < softClauseInds[i]){
-                int val = softClauses[k];
-                if (val<0)
-                    weightIfFalse += softCosts[Math.abs(val)-1];
-                else if (val > 0)
-                    weightIfTrue += softCosts[Math.abs(val)-1];
-                else
-                    System.out.println("The paradox has been reached, assemble brothers ⚔️⚔️⚔️");
-                
-                k++;
-            }
+                    // Step 1) Assign variables greedily based on soft clause weights
+                    int k = 0; // Pointer for specific clauses for a variable
+                    for (int i = 1; i <= initialSol.length; i++){
+                        int weightIfTrue=0;
+                        int weightIfFalse=0;
 
-            // Set to 1 if true, and -1 if false (makes checking far easier)
-            if (weightIfTrue >= weightIfFalse)
-                initialSol[i-1] = 1;
-            else
-                initialSol[i-1] = -1;
-            
+                        while (k < softClauseInds[i]){
+                            int val = softClauses[k];
+                            if (val<0)
+                                weightIfFalse += softCosts[Math.abs(val)-1];
+                            else if (val > 0)
+                                weightIfTrue += softCosts[Math.abs(val)-1];
+                            else
+                                System.out.println("The paradox has been reached, assemble brothers ⚔️⚔️⚔️");
+                            
+                            k++;
+                        }
+
+                        // Set to 1 if true, and -1 if false (makes checking far easier)
+                        if (weightIfTrue >= weightIfFalse)
+                            initialSol[i-1] = 1;
+                        else
+                            initialSol[i-1] = -1;
+                        
+                    }
+
+                    FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
         }
-
-        FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
+        
 
         // Step 2) Generate list of unsatisfied hard clauses, and their floats
         

@@ -35,8 +35,4 @@ Cost of flipping each variable: [0, 15, 20]
 Initial Soln: [-1, 1, -1, -1]
 Soft Cost: 0
 
-<<<<<<< HEAD
 Elapsed time: 175 ms
-=======
-Elapsed time: 66 ms
->>>>>>> 8b97234974bd7703f4d5f6cc775970d9a63c3642
