@@ -41,7 +41,7 @@ public class CapstoneFileReader {
 
     // Integer trackers (SOME OUTDATED AFTER RUNTIME)
     private int numVariables = 0;
-    private int numClauses = 0; // DEPRECATED (based on pre = calculation)
+    private int numClauses = 0; // OUTDATED (based on pre = calculation)
     private int hardCost = -1;
 
     // Getters for the instance variables
@@ -696,12 +696,14 @@ public class CapstoneFileReader {
     private int[] InitialSolution(boolean softOptimize) {
         initialSol = new int[numVariables];
 
+        // Step 1) Set all variables to false by default 
         for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
 
         if (softOptimize){
             int[] softCosts = getSoftCosts();
 
-                    // Step 1) Assign variables greedily based on soft clause weights
+                    // Step 1B) If required, assign variables greedily based on soft clause weights
+
                     int k = 0; // Pointer for specific clauses for a variable
                     for (int i = 1; i <= initialSol.length; i++){
                         int weightIfTrue=0;
@@ -725,128 +727,130 @@ public class CapstoneFileReader {
                         else
                             initialSol[i-1] = -1;
                         
-                    }
-
-                    FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
+                    }            
         }
-        
 
-        // Step 2) Generate list of unsatisfied hard clauses, and their floats
-        
-        int[] hardLits = getHardLiterals();
-        int[] hardValues = getHardValues();
-        String unsatStr = "";
-        String floats = "";
-        int val = 0;
-        int curVar;
+        FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
-        for (int i = 0; i < hardIndices.length-1; i++){
-            // Check if i-th clause is satisfied   
-            val = 0;         
-            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                // Looping through every variable in the clause, check if it is satisfied.
-                curVar = hardLits[hardIndices[i]+j];
+        // Attempt to satisfy all hard clauses
+        int runs = 5; // Number of iterations to attempt to satisfy all hard clauses
+        for (int r = 0; r < runs; r++){
+            // Step 2) Generate list of unsatisfied hard clauses, and their floats
+            int[] hardLits = getHardLiterals();
+            int[] hardValues = getHardValues();
+            String unsatStrs[];
 
-                for (int l = 1; l <= initialSol.length; l++){
-                    if ((l)*initialSol[l-1] == curVar)
-                        val++;
-                }
-                    
-            }
-            if (val < hardValues[i]){
-                unsatStr += i + " ";
-                floats += hardValues[i] - val + " "; // Number of literals in clause not satisfied
-            }
+            unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
+            String unsatStr = unsatStrs[0]; // Remove extra separator
+            String floats = unsatStrs[1]; // Remove extra separator
+            
+            if (unsatStr.length() == 0) // All hard clauses are satisfied
+                return initialSol;
+
+
+            // Otherwise, generate an array of unsatisfied hard clauses
+            numbers = Arrays.stream(unsatStr.split(" ")) // Remove extra separator at end, then split
+                                .mapToInt(Integer::parseInt)
+                                .toArray();
+
+            floatsArr = Arrays.stream(floats.split(" ")) // Remove extra separator at end, then split
+                                .mapToInt(Integer::parseInt)
+                                .toArray();
+
+            // We also generate an array of the actual clause indices
+            int[] clauses = new int[numbers.length];
+            for (int i = 0; i < numbers.length; i++)
+                clauses[i] = hardIndices[numbers[i]];
+            // Unnecessary, but useful for debugging
+
+
+            // Step 3) Find the unsatisfied hard clauses with the lowest float
+            int minFloat = Integer.MAX_VALUE;
+            int minInd = 0;
+            for (int i = 0; i < floatsArr.length; i++){
+                if (floatsArr[i] < minFloat){
+                    minInd = i;
+                    minFloat = floatsArr[i];
+                }    
                 
+            }
+
+            if (debug){
+                System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
+                System.out.println("Unsatisfied clauses " + Arrays.toString(clauses));
+                System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
+            }
+            
+
+            // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
+            int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
+            System.out.println(Arrays.toString(varsInClause));
+
+
+            int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
+
+            for (int i = 0; i < varsInClause.length; i++){
+                int myVar = varsInClause[i]; // Variable 
+                System.out.println("Considering flipping variable " + (myVar));
+                // Count occurrences in all hard clauses
+                flipDifference[i][0] = myVar; // Store variable
+                int[] altSol = initialSol.clone();
+                altSol[Math.abs(myVar)-1] *= -1; // Flip variable
+
+                String[] altunsatStrs = unsatClauses(hardLits, hardValues, hardIndices, altSol);
+
+                if (altunsatStrs[0].length() == 0){ // All hard clauses satisfied if this variable is flipped
+                    if (debug)
+                        System.out.println("All hard clauses satisfied if variable " + (myVar) + " is flipped, flip the variable brothers! ⚔️⚔️⚔️");
+                    initialSol = altSol;
+                    return initialSol;
+                }
+                // This if statement is actually semi-necessary, as if all clauses are satisfied, the split function returns an array of length 1 with an empty string
+
+                int countIfFlipped = altunsatStrs[0].split(" ").length;
+                int countIfNot = unsatStrs[0].split(" ").length;
+
+                if (debug){
+                    System.out.println("If flipped: |" + altunsatStrs[0] + "| with count " + countIfFlipped);
+                    System.out.println("If not flipped: |" + unsatStrs[0] + "| with count " + countIfNot);
+                }
+                
+                // Calculate difference in unsat clause count if flipped
+                flipDifference[i][1] =  countIfNot - countIfFlipped; // Positive value means flipping helps
+            }
+
+            if (debug)
+                System.out.println("Hard clause difference counts: " + Arrays.deepToString(flipDifference));
+
+            // Find variable with best hard clause count
+            int maxFlips = Integer.MIN_VALUE;
+            int inds = 0;
+            for (int i = 0; i < flipDifference.length; i++){
+                if (flipDifference[i][1] > maxFlips){
+                    maxFlips = flipDifference[i][1];
+                    inds = i;
+                }    
+            }
+            
+            if (maxFlips <= 0){
+                if (debug)
+                    System.out.println("No beneficial flips found, defaulting to first variable in clause");
+                inds = 0; // Default to first variable in clause if no beneficial flips found
+            }
+
+            if (debug)
+                System.out.println("Flipping variable " + (flipDifference[inds][0]) + " which helps " + flipDifference[inds][1] + " clauses");
+
+            // Flip variable with best hard count
+            initialSol[Math.abs(flipDifference[inds][0])-1] *= -1; // Flip variable
+
+            if (debug)
+                System.out.println("New initial solution: " + Arrays.toString(initialSol));
+
         }
         
-        if (unsatStr.length() == 0) // All hard clauses are satisfied
-            return initialSol;
+        System.out.println("Warning: Could not satisfy all hard clauses in " + runs + " iterations. Proceeding with best effort solution.");
 
-
-        // Generate hard clauses unsatisfied array
-        numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                              .mapToInt(Integer::parseInt)
-                              .toArray();
-
-        floatsArr = Arrays.stream((floats.substring(0, floats.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                              .mapToInt(Integer::parseInt)
-                              .toArray();
-
-
-
-        // Step 3) For all variables in unsatisfied hard clauses, calculate cost of flipping
-        String hardVars = "";
-        for (int i : numbers){
-            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                curVar = hardLits[hardIndices[i]+j];
-                if (!hardVars.contains(String.valueOf(Math.abs(curVar))))
-                    hardVars += String.valueOf(Math.abs(curVar)) + " ";
-            }
-        }
-        hardVarArr = Arrays.stream((hardVars.substring(0, hardVars.length() - 1)).split(" ")) // Remove extra separator at end, then split
-                                    .mapToInt(Integer::parseInt)
-                                    .toArray();
-
-
-        flipCosts = new int[hardVarArr.length];
-        for (int i = 0; i < hardVarArr.length; i++)
-        {
-                    
-            int unflippedCost = calcCost(initialSol);
-            initialSol[hardVarArr[i]-1] *= -1; // Flip variable
-            int flippedCost = calcCost(initialSol);
-            initialSol[hardVarArr[i]-1] *= -1; // Flip back
-
-            flipCosts[i] = flippedCost - unflippedCost;
-        }
-
-        // Step 3) Satisfy all hard clauses by flipping variables with minimal cost increases
-
-        // Sort variables by cost of flipping
-        for (int i = 0; i < flipCosts.length - 1; i++) {
-            for (int j = i + 1; j < flipCosts.length; j++) {
-                if (flipCosts[i] > flipCosts[j]) {
-                    int tempVar = flipCosts[i];
-                    flipCosts[i] = flipCosts[j];
-                    flipCosts[j] = tempVar;
-
-                    // swap corresponding variables
-                    tempVar = hardVarArr[i];
-                    hardVarArr[i] = hardVarArr[j];
-                    hardVarArr[j] = tempVar;
-                }
-            }
-        }
-
-        // Now, flip variables until all hard clauses are satisfied
-        boolean done = false;
-        int ind = 0;
-        while (!done)
-        {
-            initialSol[hardVarArr[ind++]-1] *= -1; // Flip variable with best break cost
-
-            // Check if all hard clauses are satisfied, and flip next variable if not
-            int unsatClauses = 0;
-            for (int i = 0; i < hardIndices.length-1; i++){
-                // Check if i-th clause is satisfied   
-                val = 0;         
-                for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                    // Looping through every variable in the clause, check if it is satisfied.
-                    curVar = hardLits[hardIndices[i]+j];
-
-                    for (int l = 0; l < initialSol.length; l++)
-                        if ((l+1)*initialSol[l] == curVar)
-                            val++;
-                }
-                if (val < hardValues[i]){
-                    unsatClauses++;
-                }
-            }
-            if (unsatClauses == 0)
-                done = true;
-        }
-        
         return initialSol; 
     }
 
@@ -854,6 +858,40 @@ public class CapstoneFileReader {
 
 
     // Helper and auxiliary functions
+    public String[] unsatClauses(int[] literals, int[] values, int[] indices, int[] assignments){
+        String[] unsatStr = {"", ""};
+        int val = 0;
+        int curVar;
+
+        for (int i = 0; i < indices.length-1; i++){
+            // Check if i-th clause is satisfied   
+            val = 0;         
+            for (int j = 0; j < (indices[i+1]-indices[i]); j++){
+                // Looping through every variable in the clause, check if it is satisfied.
+                curVar = literals[indices[i]+j];
+
+                for (int l = 1; l <= assignments.length; l++)
+                    if ((l)*assignments[l-1] == curVar)
+                        val++;
+            }
+            if (val < values[i])
+            {
+                unsatStr[0] += i + " ";
+                unsatStr[1] += values[i] - val + " ";
+            }
+                                
+        }
+
+        if (unsatStr[0].length() > 0) // Only attempt to remove extra separator if string is non-empty
+        {
+            unsatStr[0] = unsatStr[0].substring(0, unsatStr[0].length()-1); // Remove extra separator at end
+            unsatStr[1] = unsatStr[1].substring(0, unsatStr[1].length()-1); // Remove extra separator at end
+        }
+        
+        return unsatStr; // Remove extra separator at end
+
+    }
+
     public int calcCost(int[] assignments){
         // Calculate current assignment soft cost
         int curCost = 0;
@@ -881,6 +919,24 @@ public class CapstoneFileReader {
 
         return curCost;
     }
+
+    public int countOccurrences(int target, int[] array, int start, int end) {
+        if (array == null) {
+            throw new IllegalArgumentException("Array cannot be null");
+        }
+        if (start < 0 || end > array.length || start > end) {
+            throw new IllegalArgumentException("Invalid start or end index");
+        }
+
+        int count = 0;
+        for (int i = start; i < end; i++) {
+            if (array[i] == target) {
+                count++;
+            }
+        }
+        return count;
+    }
+
 
     public boolean isAllZeros(int[] arr) {
         for (int val : arr) {
@@ -939,24 +995,42 @@ public class CapstoneFileReader {
         return out;
     }
 
+    //private void populateArrays(String[] in, int index, int vars){
+    //    if (debug) System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
+   //     int len = in.length;
+    //    costs[index] = Integer.parseInt(in[0]);
+    //    values[index] = Integer.parseInt(in[len-1]);
+        //for (int i = 1; i < len -2 ; i++){
+         //   if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
+         //       
+         //       throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+         //   }
+          //  literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+        //}
+   // }
+
     private void populateArrays(String[] in, int index, int vars){
-        if (debug) System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
         int len = in.length;
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
-        for (int i = 1; i < len -2 ; i++){
-            if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
-                
-                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+
+        // Store literals sequentially, *preserving duplicates*
+        int start = index * vars;
+        int pos = 0;
+        for (int i = 1; i < len - 2; i++) {
+            if (!isInteger(in[i]) || Math.abs(Integer.parseInt(in[i])) > numVariables || Math.abs(Integer.parseInt(in[i])) < 1) {
+                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer: " + in[i]);
             }
-            literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+            literals[start + pos] = Integer.parseInt(in[i]);
+            pos++;
         }
     }
 
-     public boolean isInteger(String potentialNumber){
+
+    public boolean isInteger(String potentialNumber){
 
         try {
-            int number = Integer.parseInt(potentialNumber);
+            Integer.parseInt(potentialNumber);
             return true;    
         } catch (Exception e) {
             return false;
@@ -1026,7 +1100,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test2.txt", false);
+        reader.InitializeClauses("thirdtest.txt", true);
     }
 
 }
