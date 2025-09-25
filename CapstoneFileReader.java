@@ -741,35 +741,43 @@ public class CapstoneFileReader {
             String unsatStrs[];
 
             unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
-            String unsatStr = unsatStrs[0].substring(0, unsatStrs[0].length()); // Remove extra separator
-            String floats = unsatStrs[1].substring(0, unsatStrs[1].length()); // Remove extra separator
-
+            String unsatStr = unsatStrs[0]; // Remove extra separator
+            String floats = unsatStrs[1]; // Remove extra separator
             
             if (unsatStr.length() == 0) // All hard clauses are satisfied
                 return initialSol;
 
 
             // Otherwise, generate an array of unsatisfied hard clauses
-            numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
+            numbers = Arrays.stream(unsatStr.split(" ")) // Remove extra separator at end, then split
                                 .mapToInt(Integer::parseInt)
                                 .toArray();
 
-            floatsArr = Arrays.stream((floats.substring(0, floats.length() - 1)).split(" ")) // Remove extra separator at end, then split
+            floatsArr = Arrays.stream(floats.split(" ")) // Remove extra separator at end, then split
                                 .mapToInt(Integer::parseInt)
                                 .toArray();
+
+            // We also generate an array of the actual clause indices
+            int[] clauses = new int[numbers.length];
+            for (int i = 0; i < numbers.length; i++)
+                clauses[i] = hardIndices[numbers[i]];
+            // Unnecessary, but useful for debugging
 
 
             // Step 3) Find the unsatisfied hard clauses with the lowest float
             int minFloat = Integer.MAX_VALUE;
             int minInd = 0;
             for (int i = 0; i < floatsArr.length; i++){
-                if (floatsArr[i] < minFloat)
+                if (floatsArr[i] < minFloat){
                     minInd = i;
+                    minFloat = floatsArr[i];
+                }    
+                
             }
 
             if (debug){
                 System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
-                System.out.println("Unsatisfied clauses " + Arrays.toString(numbers));
+                System.out.println("Unsatisfied clauses " + Arrays.toString(clauses));
                 System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
             }
             
@@ -786,8 +794,31 @@ public class CapstoneFileReader {
                 System.out.println("Considering flipping variable " + (myVar));
                 // Count occurrences in all hard clauses
                 flipDifference[i][0] = myVar; // Store variable
-                flipDifference[i][1] = countOccurrences(-myVar, hardLits, 0, hardLits.length) - countOccurrences(myVar, hardLits, 0, hardLits.length);
+                int[] altSol = initialSol.clone();
+                altSol[Math.abs(myVar)-1] *= -1; // Flip variable
+
+                String[] altunsatStrs = unsatClauses(hardLits, hardValues, hardIndices, altSol);
+
+                if (altunsatStrs[0].length() == 0){ // All hard clauses satisfied if this variable is flipped
+                    if (debug)
+                        System.out.println("All hard clauses satisfied if variable " + (myVar) + " is flipped, flip the variable brothers! ⚔️⚔️⚔️");
+                    initialSol = altSol;
+                    return initialSol;
+                }
+                // This if statement is actually semi-necessary, as if all clauses are satisfied, the split function returns an array of length 1 with an empty string
+
+                int countIfFlipped = altunsatStrs[0].split(" ").length;
+                int countIfNot = unsatStrs[0].split(" ").length;
+
+                if (debug){
+                    System.out.println("If flipped: |" + altunsatStrs[0] + "| with count " + countIfFlipped);
+                    System.out.println("If not flipped: |" + unsatStrs[0] + "| with count " + countIfNot);
+                }
+                
+                // Calculate difference in unsat clause count if flipped
+                flipDifference[i][1] =  countIfNot - countIfFlipped; // Positive value means flipping helps
             }
+
             if (debug)
                 System.out.println("Hard clause difference counts: " + Arrays.deepToString(flipDifference));
 
@@ -818,6 +849,8 @@ public class CapstoneFileReader {
 
         }
         
+        System.out.println("Warning: Could not satisfy all hard clauses in " + runs + " iterations. Proceeding with best effort solution.");
+
         return initialSol; 
     }
 
@@ -846,10 +879,15 @@ public class CapstoneFileReader {
                 unsatStr[0] += i + " ";
                 unsatStr[1] += values[i] - val + " ";
             }
-                
-                
+                                
         }
 
+        if (unsatStr[0].length() > 0) // Only attempt to remove extra separator if string is non-empty
+        {
+            unsatStr[0] = unsatStr[0].substring(0, unsatStr[0].length()-1); // Remove extra separator at end
+            unsatStr[1] = unsatStr[1].substring(0, unsatStr[1].length()-1); // Remove extra separator at end
+        }
+        
         return unsatStr; // Remove extra separator at end
 
     }
@@ -972,7 +1010,6 @@ public class CapstoneFileReader {
    // }
 
     private void populateArrays(String[] in, int index, int vars){
-        if (debug) System.out.println(Arrays.toString(in) + "index " + index + " numvars " + vars);
         int len = in.length;
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
@@ -993,7 +1030,7 @@ public class CapstoneFileReader {
     public boolean isInteger(String potentialNumber){
 
         try {
-            int number = Integer.parseInt(potentialNumber);
+            Integer.parseInt(potentialNumber);
             return true;    
         } catch (Exception e) {
             return false;
