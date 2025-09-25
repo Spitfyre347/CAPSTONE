@@ -936,6 +936,10 @@ public class CapstoneFileReader {
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
         for (int i = 1; i < len -2 ; i++){
+            if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
+                
+                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+            }
             literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
         }
     }
