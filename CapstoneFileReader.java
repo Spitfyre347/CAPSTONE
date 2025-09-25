@@ -696,12 +696,14 @@ public class CapstoneFileReader {
     private int[] InitialSolution(boolean softOptimize) {
         initialSol = new int[numVariables];
 
+        // Step 1) Set all variables to false by default 
         for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
 
         if (softOptimize){
             int[] softCosts = getSoftCosts();
 
-                    // Step 1) Assign variables greedily based on soft clause weights
+                    // Step 1B) If required, assign variables greedily based on soft clause weights
+
                     int k = 0; // Pointer for specific clauses for a variable
                     for (int i = 1; i <= initialSol.length; i++){
                         int weightIfTrue=0;
@@ -725,40 +727,22 @@ public class CapstoneFileReader {
                         else
                             initialSol[i-1] = -1;
                         
-                    }
-
-                    FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
+                    }            
         }
-        
+
+        FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
         // Step 2) Generate list of unsatisfied hard clauses, and their floats
-        
         int[] hardLits = getHardLiterals();
         int[] hardValues = getHardValues();
-        String unsatStr = "";
-        String floats = "";
+        String unsatStrs[];
         int val = 0;
         int curVar;
 
-        for (int i = 0; i < hardIndices.length-1; i++){
-            // Check if i-th clause is satisfied   
-            val = 0;         
-            for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
-                // Looping through every variable in the clause, check if it is satisfied.
-                curVar = hardLits[hardIndices[i]+j];
+        unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
+        String unsatStr = unsatStrs[0].substring(0, unsatStrs[0].length()); // Remove extra separator
+        String floats = unsatStrs[1].substring(0, unsatStrs[1].length()); // Remove extra separator
 
-                for (int l = 1; l <= initialSol.length; l++){
-                    if ((l)*initialSol[l-1] == curVar)
-                        val++;
-                }
-                    
-            }
-            if (val < hardValues[i]){
-                unsatStr += i + " ";
-                floats += hardValues[i] - val + " "; // Number of literals in clause not satisfied
-            }
-                
-        }
         
         if (unsatStr.length() == 0) // All hard clauses are satisfied
             return initialSol;
@@ -774,8 +758,29 @@ public class CapstoneFileReader {
                               .toArray();
 
 
+        // Step 3) Find the unsatisfied hard clauses with the lowest float
+        int minFloat = Integer.MAX_VALUE;
+        int minInd = 0;
+        for (int i = 0; i < floatsArr.length; i++){
+            if (floatsArr[i] < minFloat)
+                minInd = i;
+        }
 
-        // Step 3) For all variables in unsatisfied hard clauses, calculate cost of flipping
+        if (debug){
+            System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
+            System.out.println("Unsatisfied clauses " + Arrays.toString(numbers));
+            System.out.println("Working on clause at index " + minInd);
+        }
+        
+
+        // Step 3) Pick the hard clause with the lowest float, and flip the variable in that clause 
+        // which helps the most hard clauses if flipped
+
+        int varCount = hardIndices[minInd+1] - hardIndices[minInd];
+        for (int i = 0; i < varCount; i++){
+            System.out.println(hardLits[hardIndices[minInd + i]]);
+            // Count how many
+        }
         String hardVars = "";
         for (int i : numbers){
             for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
@@ -854,6 +859,35 @@ public class CapstoneFileReader {
 
 
     // Helper and auxiliary functions
+    public String[] unsatClauses(int[] literals, int[] values, int[] indices, int[] assignments){
+        String[] unsatStr = {"", ""};
+        int val = 0;
+        int curVar;
+
+        for (int i = 0; i < indices.length-1; i++){
+            // Check if i-th clause is satisfied   
+            val = 0;         
+            for (int j = 0; j < (indices[i+1]-indices[i]); j++){
+                // Looping through every variable in the clause, check if it is satisfied.
+                curVar = literals[indices[i]+j];
+
+                for (int l = 1; l <= assignments.length; l++)
+                    if ((l)*assignments[l-1] == curVar)
+                        val++;
+            }
+            if (val < values[i])
+            {
+                unsatStr[0] += i + " ";
+                unsatStr[1] += values[i] - val + " ";
+            }
+                
+                
+        }
+
+        return unsatStr; // Remove extra separator at end
+
+    }
+
     public int calcCost(int[] assignments){
         // Calculate current assignment soft cost
         int curCost = 0;
@@ -939,21 +973,40 @@ public class CapstoneFileReader {
         return out;
     }
 
+    //private void populateArrays(String[] in, int index, int vars){
+    //    if (debug) System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
+   //     int len = in.length;
+    //    costs[index] = Integer.parseInt(in[0]);
+    //    values[index] = Integer.parseInt(in[len-1]);
+        //for (int i = 1; i < len -2 ; i++){
+         //   if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
+         //       
+         //       throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+         //   }
+          //  literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+        //}
+   // }
+
     private void populateArrays(String[] in, int index, int vars){
-        if (debug) System.out.println(Arrays.toString(in) + "index " + String.valueOf(index) + " numvars " + String.valueOf(vars));
+        if (debug) System.out.println(Arrays.toString(in) + "index " + index + " numvars " + vars);
         int len = in.length;
         costs[index] = Integer.parseInt(in[0]);
         values[index] = Integer.parseInt(in[len-1]);
-        for (int i = 1; i < len -2 ; i++){
-            if (!isInteger(in[i]) || !(Math.abs(Integer.parseInt(in[i])) <= numClauses && Math.abs(Integer.parseInt(in[i])) >=1)) {
-                
-                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer(sign may have changed from input file): " + in[i]);
+
+        // Store literals sequentially, *preserving duplicates*
+        int start = index * vars;
+        int pos = 0;
+        for (int i = 1; i < len - 2; i++) {
+            if (!isInteger(in[i]) || Math.abs(Integer.parseInt(in[i])) > numVariables || Math.abs(Integer.parseInt(in[i])) < 1) {
+                throw new IllegalStateException("Error detected - a literal has a value outside of the valid range or is not an integer: " + in[i]);
             }
-            literals[index*vars + Math.abs(Integer.parseInt(in[i]))-1] = Integer.parseInt(in[i]);
+            literals[start + pos] = Integer.parseInt(in[i]);
+            pos++;
         }
     }
 
-     public boolean isInteger(String potentialNumber){
+
+    public boolean isInteger(String potentialNumber){
 
         try {
             int number = Integer.parseInt(potentialNumber);
@@ -1026,7 +1079,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test2.txt", false);
+        reader.InitializeClauses("thirdtest.txt", true);
     }
 
 }
