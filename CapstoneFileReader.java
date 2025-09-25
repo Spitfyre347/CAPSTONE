@@ -41,7 +41,7 @@ public class CapstoneFileReader {
 
     // Integer trackers (SOME OUTDATED AFTER RUNTIME)
     private int numVariables = 0;
-    private int numClauses = 0; // DEPRECATED (based on pre = calculation)
+    private int numClauses = 0; // OUTDATED (based on pre = calculation)
     private int hardCost = -1;
 
     // Getters for the instance variables
@@ -748,7 +748,7 @@ public class CapstoneFileReader {
             return initialSol;
 
 
-        // Generate hard clauses unsatisfied array
+        // Generate  array of unsatisfied hard clauses
         numbers = Arrays.stream((unsatStr.substring(0, unsatStr.length() - 1)).split(" ")) // Remove extra separator at end, then split
                               .mapToInt(Integer::parseInt)
                               .toArray();
@@ -769,19 +769,37 @@ public class CapstoneFileReader {
         if (debug){
             System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
             System.out.println("Unsatisfied clauses " + Arrays.toString(numbers));
-            System.out.println("Working on clause at index " + minInd);
+            System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
         }
         
 
-        // Step 3) Pick the hard clause with the lowest float, and flip the variable in that clause 
-        // which helps the most hard clauses if flipped
+        // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
+        int varCount = hardIndices[numbers[minInd]+1] - hardIndices[numbers[minInd]];
+        int[][] hardClauseCounts = new int[varCount][2];
 
-        int varCount = hardIndices[minInd+1] - hardIndices[minInd];
         for (int i = 0; i < varCount; i++){
-            System.out.println(hardLits[hardIndices[minInd + i]]);
-            // Count how many
+            int myVar = hardLits[hardIndices[numbers[minInd]] + i]; // Variable 
+            System.out.println("Considering flipping variable " + (myVar));
+            // Count occurrences in all hard clauses
+            hardClauseCounts[i][0] = countOccurrences(myVar, hardLits, 0, hardLits.length);
+            hardClauseCounts[i][1] = countOccurrences((myVar*-1), hardLits, 0, hardLits.length);
         }
-        String hardVars = "";
+        System.out.println(Arrays.deepToString(hardClauseCounts));
+
+        //int maxFlips = -1;
+        //int maxInd = 0;
+        //for (int i = 0; i < hardClauseCounts.length; i++){
+        //    if (hardClauseCounts[i] > maxFlips)
+        //        maxInd = i;
+       //}
+        //System.out.println("Flipping variable " + (hardLits[hardIndices[numbers[minInd]] + maxInd]) + " which helps " + hardClauseCounts[maxInd] + " clauses");
+        // Flip variable with best hard count
+        //hardLits[hardIndices[numbers[minInd]] + i]
+
+        //initialSol[ maxInd]]]
+        
+
+        /*String hardVars = "";
         for (int i : numbers){
             for (int j = 0; j < (hardIndices[i+1]-hardIndices[i]); j++){
                 curVar = hardLits[hardIndices[i]+j];
@@ -850,7 +868,7 @@ public class CapstoneFileReader {
             }
             if (unsatClauses == 0)
                 done = true;
-        }
+        }*/
         
         return initialSol; 
     }
@@ -915,6 +933,24 @@ public class CapstoneFileReader {
 
         return curCost;
     }
+
+    public int countOccurrences(int target, int[] array, int start, int end) {
+        if (array == null) {
+            throw new IllegalArgumentException("Array cannot be null");
+        }
+        if (start < 0 || end > array.length || start > end) {
+            throw new IllegalArgumentException("Invalid start or end index");
+        }
+
+        int count = 0;
+        for (int i = start; i < end; i++) {
+            if (array[i] == target) {
+                count++;
+            }
+        }
+        return count;
+    }
+
 
     public boolean isAllZeros(int[] arr) {
         for (int val : arr) {
