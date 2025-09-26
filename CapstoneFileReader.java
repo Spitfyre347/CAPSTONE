@@ -287,6 +287,8 @@ public class CapstoneFileReader {
         System.out.println("Arrays optimized, proceeding to intial solution");
 
         initialSol = InitialSolution(false);
+        System.out.println("Initial solution found: " + Arrays.toString(initialSol));
+        System.out.println("Preprocessing complete. >:)");
         StopTimer();
 
         if (debug){
@@ -784,14 +786,14 @@ public class CapstoneFileReader {
 
             // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
             int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
-            System.out.println(Arrays.toString(varsInClause));
 
 
             int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
 
             for (int i = 0; i < varsInClause.length; i++){
                 int myVar = varsInClause[i]; // Variable 
-                System.out.println("Considering flipping variable " + (myVar));
+                if (debug)
+                    System.out.println("Considering flipping variable " + (myVar));
                 // Count occurrences in all hard clauses
                 flipDifference[i][0] = myVar; // Store variable
                 int[] altSol = initialSol.clone();
@@ -1100,7 +1102,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", true);
+        reader.InitializeClauses("thirdtest.txt", false);
     }
 
 }
