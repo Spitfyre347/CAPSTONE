@@ -722,6 +722,8 @@ public class CapstoneFileReader {
         }
         
 
+        // Mostly-deprecated code for greedy assignment based on soft clauses
+        // *******************************************************************
         if (softOptimize){
             int[] softCosts = getSoftCosts();
 
@@ -752,13 +754,16 @@ public class CapstoneFileReader {
                         
                     }            
         }
-
-        FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
+        // *******************************************************************
+        if (!optimize)
+            FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
         // Attempt to satisfy all hard clauses
         int prevVars = Integer.MAX_VALUE; 
         int faults = 0;
-        // Run until no progress has been made with the number of unsatisfied hard literals, twice consecutively
+
+        // Run until no progress has been made with the number of unsatisfied hard literals, 
+        // maxFaults times consecutively
         while (true){
             // Step 2) Generate list of unsatisfied hard clauses, and their floats
             int[] hardLits = getHardLiterals();
@@ -783,10 +788,15 @@ public class CapstoneFileReader {
                                 .toArray();
 
             // We also generate an array of the actual clause indices
-            int[] clauses = new int[numbers.length];
-            for (int i = 0; i < numbers.length; i++)
-                clauses[i] = hardIndices[numbers[i]];
-            // Unnecessary, but useful for debugging
+            int[] clauses = null;
+
+            if (!optimize){
+                clauses = new int[numbers.length];
+                for (int i = 0; i < numbers.length; i++)
+                    clauses[i] = hardIndices[numbers[i]];
+                // Unnecessary, but useful for debugging
+            }
+           
 
 
             // Step 3) Find the unsatisfied hard clauses with the lowest float
@@ -813,7 +823,6 @@ public class CapstoneFileReader {
 
             // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
             int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
-
 
             int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
 
