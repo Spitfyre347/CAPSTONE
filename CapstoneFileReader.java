@@ -735,8 +735,11 @@ public class CapstoneFileReader {
         FirstInitialSol = initialSol.clone(); // Store first initial solution for reference
 
         // Attempt to satisfy all hard clauses
-        int runs = 5; // Number of iterations to attempt to satisfy all hard clauses
-        for (int r = 0; r < runs; r++){
+        int prevVars = Integer.MAX_VALUE; 
+        int faults = 0;
+        int maxFaults = 2;
+        // Run until no progress has been made with the number of unsatisfied hard literals, twice consecutively
+        while (true){
             // Step 2) Generate list of unsatisfied hard clauses, and their floats
             int[] hardLits = getHardLiterals();
             int[] hardValues = getHardValues();
@@ -774,12 +777,16 @@ public class CapstoneFileReader {
                     minInd = i;
                     minFloat = floatsArr[i];
                 }    
-                
             }
+
+            int totalVarCount = 0;
+            for (int i = 0; i < numbers.length; i++)
+                totalVarCount += hardIndices[numbers[i]+1] - hardIndices[numbers[i]];
 
             if (debug){
                 System.out.println("Unsatisfied floats " + Arrays.toString(floatsArr));
                 System.out.println("Unsatisfied clauses " + Arrays.toString(clauses));
+                System.out.println("Unsatisfied literals " + totalVarCount + " (previous: " + prevVars + ")");
                 System.out.println("Working on clause at index " + hardIndices[numbers[minInd]]);
             }
             
@@ -849,11 +856,20 @@ public class CapstoneFileReader {
             if (debug)
                 System.out.println("New initial solution: " + Arrays.toString(initialSol));
 
-        }
-        
-        System.out.println("Warning: Could not satisfy all hard clauses in " + runs + " iterations. Proceeding with best effort solution.");
+            if (prevVars <= totalVarCount){ // No progress made
+                faults++;
+            }
+            else{
+                faults = 0;
+                prevVars = totalVarCount;
+            }
 
-        return initialSol; 
+            if (faults >= maxFaults){ // No progress made in maxFault iterations, so break
+                if (debug)
+                    System.out.println("No progress made in two iterations, ending initial solution search");
+                return initialSol;
+            }
+        }
     }
 
     
@@ -1102,7 +1118,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", false);
+        reader.InitializeClauses("thirdtest.txt", true);
     }
 
 }
