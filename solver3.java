@@ -1,12 +1,13 @@
 import java.util.BitSet;
 import java.util.Random;
 import java.util.ArrayList;
-import java.util.stream.IntStream;
 
 public class solver3 {
 
     // Max runtime
     private final static int T = 10000;
+    private static long startTime, endTime;
+    static double scaling = 1;
 
     // Variables
     static BitSet vars; // BitSet to keep track of boolean variables
@@ -24,7 +25,7 @@ public class solver3 {
     static int[] hardFloats; // floats for each hard clause
     static ArrayList<Integer> unsat; // unSAT soft clauses
     static int[] unsat_arr; // unSAT soft clauses as primitive array
-    static int[] dynamicCosts; // weighted soft clause costs
+    static double[] dynamicCosts; // weighted soft clause costs
     static int[] softValues; // k-values for soft clauses
     static int[] hardValues; // k-values for hard clauses
     static int[] softClauseIndices; // indices to locate soft clauses containing a specific variable
@@ -38,7 +39,7 @@ public class solver3 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("unsat_soft.wcard", false); 
+        reader.InitializeClauses("sample.wcard", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -58,7 +59,7 @@ public class solver3 {
         hardClauses = reader.getHardClauses();
 
         // Quick calculations to initialise other variables
-        dynamicCosts = softCosts.clone(); // array for dynamic soft costs
+        dynamicCosts = new double[softCosts.length]; // array for dynamic soft costs
         numSoft = softValues.length;
         numHard = hardValues.length;
         softFloats = new int[softValues.length];
@@ -78,7 +79,6 @@ public class solver3 {
             if (inital_sol[k]==1) {vars.set(k);}
         }
     }
-
     
     public static void main(String[] args) 
     {
@@ -106,6 +106,7 @@ public class solver3 {
         boolean sat;
         for (int c=1; c <= numSoft; c++)
         {
+            dynamicCosts[c-1] = 1; // initialize dynamic costs
             softFloats[c-1] = checkFloat(c, false);
             sat = checkSATFloat(c, false); // if current clause is unSAT, add to array
             if (!sat) 
@@ -134,9 +135,13 @@ public class solver3 {
         long[] makeScores;
         long[] breakScores;
 
+        StartTimer();
+
         // Main loop:
         int t = 0, v = 0, c = 0;
+        int lastImproved = 0;
         final double RANDOM_CHANCE = 0.01;
+        final double ALPHA = 0.9;
         int curClause = -1;
         int start, end;
         boolean skip = false;
@@ -150,7 +155,7 @@ public class solver3 {
             // Algorithm:
             // update floats - ONLY AFFECTED CLAUSES
             // calculate cost and update best assignment - ONLY AFFECTED CLAUSES
-            // pick unsat soft clause, with prob weighted by dynamic cost
+            // pick unsat soft clause, with prob weighted by cost
             // calculate break and make costs for variables in clause
             // outlaw any flips that violate hard clauses
             // flip:
@@ -171,22 +176,25 @@ public class solver3 {
                 c = affectedSoftClauses[i];
                 if (c==0) {break;} // If we have gone through all affected soft clauses, we are done
                 softFloats[c-1] = checkFloat(c, false);
-            }
 
-            // Calculate total cost of state and update unsat array - ONLY AFFECTED CLAUSES
-            curTotalCost = 0;
-            unsat.clear();
-            sat = true;
-            for (int cl=1; cl <= numSoft; cl++)
-            {
-                // if current clause is unSAT, add to array
-                sat = checkSATFloat(cl, false);
-                if (!sat) 
+                // Also update unsat array and total cost
+                if (softFloats[c-1] >= 0 && unsat.contains(c)) 
                 {
-                    unsat.add(cl);
-                    curTotalCost += softCosts[cl-1]; // Add to total cost if not SAT
+                    // remove if was unSAT and is now SAT
+                    unsat.remove((Integer)c);
+                    curTotalCost -= softCosts[c-1];
+                } 
+
+                if (softFloats[c-1] < 0 && !unsat.contains(c)) 
+                {
+                    // add if was SAT and is now unSAT
+                    unsat.add(c);
+                    curTotalCost += softCosts[c-1];
                 }
             }
+
+            if (t % 10 == 0) {scaling*=ALPHA;}
+            for (int i=0; i < unsat.size(); i++) {dynamicCosts[unsat.get(i)-1] += 0.1/scaling;}
 
             // Exit if cost is 0
             if (curTotalCost==0)
@@ -201,13 +209,15 @@ public class solver3 {
             if (curTotalCost < bestCost)
             {
                 bestCost = curTotalCost;
+                lastImproved = t;
                 bestAssignment = (BitSet)vars.clone();
                 System.out.println("New Best Cost: " + Long.toString(bestCost));
             }
 
             t++;
 
-            if (t > T) {break;} // if time is up, end run
+            if (t > T) {System.out.println("Max time reached"); break;} // if time is up, end run
+            if (t-lastImproved>1000) {System.out.println("No improvement, timeout at t = "+String.valueOf(t)); break;} // if no improvements have been made in a while, break
 
             // Convert unsat ArrayList into int[]
             unsat_arr = new int[unsat.size()];
@@ -324,6 +334,8 @@ public class solver3 {
             }
         }
 
+        StopTimer();
+
         System.out.println("Final Best Cost: " + String.valueOf(bestCost));
 
         // Create string output
@@ -340,19 +352,25 @@ public class solver3 {
     public static int pickClause(int[] unsat, Random random)
     {
         // Use the Acceptance-Rejection algorithm to sample from the weighted distribution of unSAT clauses
-        int totalCost = 0;
-        int[] costs = new int[unsat.length];
+        double totalCost = 0;
+        double weight;
+        double[] costs = new double[unsat.length];
         for (int c=0; c < unsat.length; c++)
         {
-            costs[c] = softCosts[unsat[c]-1]; // get relevant weighted costs
+            weight = scaling * dynamicCosts[unsat[c]-1];
+            costs[c] = (weight > 1) ? weight * softCosts[unsat[c]-1] : softCosts[unsat[c]-1]; // get relevant weighted costs (min 1*cost)
             totalCost += costs[c]; // calculate sum of costs to normalize prob.
         }
 
+        int k = 0;
         int unif = 0;
         while (true) 
         {
+            k++;
             unif = random.nextInt(unsat.length); // Uniformly draw from clauses
-            if (random.nextDouble() < ( (double) costs[unif] / totalCost)) {return unsat[unif];} // Accept with prob cost/total_cost
+            
+            // Accept with prob cost/total_cost, weighted by a quadratic counter to ensure it doesn't run too long (max. 1000)
+            if (random.nextDouble() < ( (double) costs[unif] / totalCost + 0.000001*k*k)) {return unsat[unif];}
         }
     }
 
@@ -460,5 +478,15 @@ public class solver3 {
         // If clause is satisfied, cost is 0, otherwise return associated cost
         if (hard) {return (checkSATFloat(clause, true)) ? 0 : hardCost;}
         else {return (checkSATFloat(clause, false)) ? 0 : softCosts[clause-1];}        
+    }
+
+    private static void StartTimer(){
+        startTime = System.currentTimeMillis();
+    }
+
+    private static void StopTimer(){
+        endTime = System.currentTimeMillis();
+        long elapsedTime = endTime - startTime;
+        System.out.println("Elapsed time: " + elapsedTime + " ms");
     }
 }
