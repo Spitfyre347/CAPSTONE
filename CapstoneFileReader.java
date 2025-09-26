@@ -286,7 +286,7 @@ public class CapstoneFileReader {
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
-        initialSol = InitialSolution(false);
+        initialSol = InitialSolution(false, true, 2); // Soft optimize off, optimize on, maxFaults = 2
         System.out.println("Initial solution found: " + Arrays.toString(initialSol));
         System.out.println("Preprocessing complete. >:)");
         StopTimer();
@@ -695,11 +695,32 @@ public class CapstoneFileReader {
 
     // Find initial solution (greedy), satisfying all hard clauses if possible. 
     // Returns assignment as int[numVariables] with values 0 or 1.
-    private int[] InitialSolution(boolean softOptimize) {
+    private int[] InitialSolution(boolean softOptimize, boolean optimize, int maxFaults) {
         initialSol = new int[numVariables];
 
-        // Step 1) Set all variables to false by default 
-        for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
+        // Step 1) Set all variables, based on a random or greedy assignment
+        double rand = Math.random();
+        if (rand < 0.3){
+            for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
+            if (debug)
+                System.out.println("Initial solution: All false");
+        }
+        else if (rand < 0.6){
+            for (int i = 0; i < initialSol.length; i++) { initialSol[i] = 1;} // Defaults all to true (1)
+            if (debug)
+                System.out.println("Initial solution: All true");
+        }
+        else{
+            for (int i = 0; i < initialSol.length; i++) { // Randomly assigns each variable
+                if (Math.random() < 0.5)
+                    initialSol[i] = -1;
+                else
+                    initialSol[i] = 1;
+            }
+            if (debug)
+                System.out.println("Initial solution: Random");
+        }
+        
 
         if (softOptimize){
             int[] softCosts = getSoftCosts();
@@ -737,7 +758,6 @@ public class CapstoneFileReader {
         // Attempt to satisfy all hard clauses
         int prevVars = Integer.MAX_VALUE; 
         int faults = 0;
-        int maxFaults = 2;
         // Run until no progress has been made with the number of unsatisfied hard literals, twice consecutively
         while (true){
             // Step 2) Generate list of unsatisfied hard clauses, and their floats
