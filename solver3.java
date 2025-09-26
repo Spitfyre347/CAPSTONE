@@ -141,7 +141,7 @@ public class solver3 {
         int t = 0, v = 0, c = 0;
         int lastImproved = 0;
         final double RANDOM_CHANCE = 0.01;
-        final double ALPHA = 0.6;
+        final double ALPHA = 0.9;
         int curClause = -1;
         int start, end;
         boolean skip = false;
@@ -194,7 +194,7 @@ public class solver3 {
             }
 
             if (t % 10 == 0) {scaling*=ALPHA;}
-            for (int i=0; i < unsat.size(); i++) {dynamicCosts[unsat.get(i)-1] += 1/scaling;}
+            for (int i=0; i < unsat.size(); i++) {dynamicCosts[unsat.get(i)-1] += 0.1/scaling;}
 
             // Exit if cost is 0
             if (curTotalCost==0)
@@ -216,7 +216,7 @@ public class solver3 {
 
             t++;
 
-            if (t > T) {System.out.println("Max time reached."); break;} // if time is up, end run
+            if (t > T) {System.out.println("Max time reached"); break;} // if time is up, end run
             if (t-lastImproved>1000) {System.out.println("No improvement, timeout at t = "+String.valueOf(t)); break;} // if no improvements have been made in a while, break
 
             // Convert unsat ArrayList into int[]
