@@ -32,8 +32,6 @@ public class solver3 {
     static int[] softClauses; // variables expressed ito the soft clauses they are found in
     static int[] hardClauseIndices; // indices to locate hard clauses containing a specific variable
     static int[] hardClauses; // variables expressed ito the hard clauses they are found in
-    static int[] affectedSoftClauses; // subset of soft clauses that need to be updated after a flip
-    static int[] affectedHardClauses; // subset of hard clauses that need to be updated after a flip
 
     public static void setup()
     {
@@ -64,8 +62,6 @@ public class solver3 {
         numHard = hardValues.length;
         softFloats = new int[softValues.length];
         hardFloats = new int[hardValues.length];
-        affectedSoftClauses = new int[numSoft];
-        affectedHardClauses = new int[numHard];
 
         // Create Boolean variables
         vars = new BitSet(numVars);
@@ -149,7 +145,6 @@ public class solver3 {
         long bestScore = 0;
         int bestFlip = -1;
         int sign = 1, vsign = 1;
-        int ascIdx = 0, ahcIdx = 0;
         while (true)
         {
             // Algorithm:
@@ -160,39 +155,41 @@ public class solver3 {
             // outlaw any flips that violate hard clauses
             // flip:
             // a) variable with highest score: make - break
-            // b) with small chance, random flip
+            // b) with small chance, random flip            
 
-            // Update floats - ONLY AFFECTED CLAUSES
-            // Calculate float of hard clauses
-            for (int i=0; i < numHard; i++)
+            if (bestFlip != -1)
             {
-                c = affectedHardClauses[i];
-                if (c==0) {break;} // If we have gone through all affected hard clauses, we are done
-                hardFloats[c-1] = checkFloat(c, true);
-            }
-            // Calculate float of soft clauses
-            for (int i=0; i < numSoft; i++)
-            {
-                c = affectedSoftClauses[i];
-                if (c==0) {break;} // If we have gone through all affected soft clauses, we are done
-                softFloats[c-1] = checkFloat(c, false);
-
-                // Also update unsat array and total cost
-                if (softFloats[c-1] >= 0 && unsat.contains(c)) 
+                // Update floats - ONLY AFFECTED CLAUSES
+                // Calculate float of hard clauses
+                for (int i = hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
                 {
-                    // remove if was unSAT and is now SAT
-                    unsat.remove((Integer)c);
-                    curTotalCost -= softCosts[c-1];
-                } 
-
-                if (softFloats[c-1] < 0 && !unsat.contains(c)) 
+                    sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
+                    c = hardClauses[i]*sign;
+                    hardFloats[c-1] = checkFloat(c, true);
+                }
+                // Calculate float of soft clauses
+                for (int i = softClauseIndices[bestFlip-1]; i < softClauseIndices[bestFlip-1+1]; i++)
                 {
-                    // add if was SAT and is now unSAT
-                    unsat.add(c);
-                    curTotalCost += softCosts[c-1];
+                    sign = (softClauses[i] < 0) ? -1 : 1;
+                    c = softClauses[i]*sign; // get |clause|
+                    softFloats[c-1] = checkFloat(c, false);
+
+                    // Also update unsat array and total cost
+                    if (softFloats[c-1] >= 0 && unsat.contains(c)) 
+                    {
+                        // remove if was unSAT and is now SAT
+                        unsat.remove((Integer)c);
+                        curTotalCost -= softCosts[c-1];
+                    } 
+
+                    if (softFloats[c-1] < 0 && !unsat.contains(c)) 
+                    {
+                        // add if was SAT and is now unSAT
+                        unsat.add(c);
+                        curTotalCost += softCosts[c-1];
+                    }
                 }
             }
-
             if (t % 10 == 0) {scaling*=ALPHA;}
             for (int i=0; i < unsat.size(); i++) {dynamicCosts[unsat.get(i)-1] += 0.1/scaling;}
 
@@ -222,12 +219,6 @@ public class solver3 {
             // Convert unsat ArrayList into int[]
             unsat_arr = new int[unsat.size()];
             for (int i = 0; i < unsat.size(); i++) {unsat_arr[i] = unsat.get(i);}
-
-            // Reset affected clauses arrays and indices
-            affectedSoftClauses = new int[numSoft]; 
-            affectedHardClauses = new int[numHard]; 
-            ascIdx = 0;
-            ahcIdx = 0;
 
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
@@ -318,20 +309,6 @@ public class solver3 {
 
             // Flip selected variable
             vars.flip(bestFlip-1);
-
-            // Update affected soft clauses:
-            for (int i = softClauseIndices[bestFlip-1]; i < softClauseIndices[bestFlip-1+1]; i++)
-            {
-                sign = (softClauses[i] < 0) ? -1 : 1; // check sign of literal
-                affectedSoftClauses[ascIdx++] = softClauses[i]*sign; // add |clausenum| to list
-            }
-
-            // Update affected hard clauses:
-            for (int i = hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
-            {
-                sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
-                affectedHardClauses[ahcIdx++] = hardClauses[i]*sign; // add |clausenum| to list
-            }
         }
 
         StopTimer();
