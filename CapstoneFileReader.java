@@ -315,7 +315,7 @@ public class CapstoneFileReader {
         //initialSol = InitialSolution(false, true, 2); // Soft optimize off, optimize on, maxFaults = 2
         //System.out.println("Initial solution found: " + Arrays.toString(initialSol));
 
-        initialSol = RandomRestarts(insol, 2); // Soft optimize off, optimize on, maxFaults = 2
+        initialSol = RandomRestarts(insol, 5); // Soft optimize off, optimize on, maxFaults = 2
         System.out.println("Initial solution found: " + Arrays.toString(initialSol));
 
 
@@ -1350,9 +1350,10 @@ public class CapstoneFileReader {
     }
 
     // Main method for quick testing
+    /* 
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("thirdtest.txt", true);
-    }
+    }*/
 
 }
