@@ -1,6 +1,8 @@
 import java.util.BitSet;
 import java.util.Random;
 
+import java.util.Scanner;
+
 public class solver4 {
 
     // File reader must be global
@@ -83,6 +85,9 @@ public class solver4 {
             output();  
         }
               
+        Scanner scan = new Scanner(System.in);
+        scan.nextLine();
+        scan.close();
     }
 
 

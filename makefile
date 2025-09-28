@@ -1,31 +1,31 @@
-# Makefile for your Java program
-
-# Compiler
+# Compiler and runtime
 JAVAC = javac
 JAVA  = java
 
-# Main class name (the one with public static void main)
+# Main class
 MAIN = solver4
 
-# Find all .java files automatically
+# Find all Java source files
 SOURCES = $(wildcard *.java)
 CLASSES = $(SOURCES:.java=.class)
 
-# Default arguments (change these to what you want)
-DEFAULT_ARGS = samples/small/test2.txt 10000 50000 0.01 0.1 0.5
+# Default arguments
+DEFAULT_ARGS = myfile.txt 10000 50000 0.01 0.1 0.5
+NUM_RUNS = 5
 
-# Default target: compile and run with default args
+# Default target: compile and run default number of runs in parallel
 all: $(CLASSES)
-	$(JAVA) $(MAIN) $(DEFAULT_ARGS)
+	@echo Launching $(NUM_RUNS) parallel runs...
+	@for /L %%i in (1,1,$(NUM_RUNS)) do start "" $(JAVA) $(MAIN) $(DEFAULT_ARGS)
 
 # Compile .java -> .class
 %.class: %.java
 	$(JAVAC) $<
 
-# Run with custom arguments: make run ARGS="..."
+# Run with custom arguments
 run: $(CLASSES)
 	$(JAVA) $(MAIN) $(ARGS)
 
 # Clean up compiled .class files
 clean:
-	rm -f *.class
+	del /Q *.class
