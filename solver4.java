@@ -4,7 +4,6 @@ import java.util.Random;
 public class solver4 {
 
     // Max runtime
-    private final static int T = 100000;
     private static long startTime, endTime;
     static double scaling = 1;
 
@@ -41,6 +40,12 @@ public class solver4 {
     static BitSet bestAssignment = new BitSet(numVars);
     static long curTotalCost;
 
+    // Parameters
+    private final static int T = 100000;
+    private final static String filename = "sample.wcard";
+    private final static double RANDOM_CHANCE = 0.01;
+    
+
     //////////////////
     // MAIN METHODS //
     //////////////////
@@ -49,7 +54,7 @@ public class solver4 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("sample.wcard", false); 
+        reader.InitializeClauses("test.txt", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -144,8 +149,6 @@ public class solver4 {
         long bestScore = 0;
         int bestFlip = -1;
 
-        // Parameters
-        final double RANDOM_CHANCE = 0.01;
 
         // MAIN LOOP
         while (true)
