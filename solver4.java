@@ -46,16 +46,45 @@ public class solver4 {
     static long curTotalCost;
 
     // Parameters
-    private final static int T = 10000;
-    private final static String filename = "samples/small/test2.txt";
-    private final static double RANDOM_CHANCE = 0.01;
-    private final static double PROPORTION = 0.1;
-    private final static double PROB_HEAVY = 0.5;
-    private final static int RESTART_INTERVAL = 50000;
+    private static String filename = "samples/small/test2.txt";
+    private static int T = 10000;
+    private static int RESTART_INTERVAL = 50000;
+    private static double RANDOM_CHANCE = 0.01;
+    private static double PROPORTION = 0.1;
+    private static double PROB_HEAVY = 0.5;
+   
 
     //////////////////
     // MAIN METHODS //
     //////////////////
+
+    public static void main(String[] args) 
+    {
+        try {
+            filename = args[0];
+            T = Integer.parseInt(args[1]);
+            RESTART_INTERVAL = Integer.parseInt(args[2]);
+            RANDOM_CHANCE = Double.parseDouble(args[3]);
+            PROPORTION = Double.parseDouble(args[4]);
+            PROB_HEAVY = Double.parseDouble(args[5]);
+        } catch (Exception e) {
+            System.err.println("Error: Invalid arguments entered. Terminating program.");
+        }
+        
+
+
+        boolean success = setup();
+
+        if (success) {
+            initialize_solver(true);
+            StartTimer();
+            solve();
+            StopTimer();
+            output();  
+        }
+              
+    }
+
 
     public static boolean setup()
     {
@@ -183,6 +212,8 @@ public class solver4 {
         int bestFlip = -1;
 
         // MAIN LOOP
+
+        
         while (true)
         {
             //  Algorithm:
@@ -436,19 +467,6 @@ public class solver4 {
         System.out.println("Corresponding Assignment: " + output);
     }
     
-    public static void main(String[] args) 
-    {
-        boolean success = setup();
-
-        if (success) {
-            initialize_solver(true);
-            StartTimer();
-            solve();
-            StopTimer();
-            output();  
-        }
-              
-    }
 
     ////////////////////
     // HELPER METHODS //
