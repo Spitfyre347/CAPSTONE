@@ -15,8 +15,12 @@ NUM_RUNS = 5
 
 # Default target: compile and run default number of runs in parallel
 all: $(CLASSES)
-	@echo Launching $(NUM_RUNS) parallel runs...
-	@for /L %%i in (1,1,$(NUM_RUNS)) do start "" $(JAVA) $(MAIN) $(DEFAULT_ARGS)
+	@echo "Launching $(NUM_RUNS) parallel runs..."
+	@for i in $(shell seq 1 $(NUM_RUNS)); do \
+		$(JAVA) $(MAIN) $(DEFAULT_ARGS) & \
+	done
+	@wait
+	@echo "All runs completed."
 
 # Compile .java -> .class
 %.class: %.java
@@ -28,4 +32,4 @@ run: $(CLASSES)
 
 # Clean up compiled .class files
 clean:
-	del /Q *.class
+	rm -f *.class
