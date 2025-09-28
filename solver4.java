@@ -46,8 +46,8 @@ public class solver4 {
     static long curTotalCost;
 
     // Parameters
-    private final static int T = 100000;
-    private final static String filename = "samples/small/test.txt";
+    private final static int T = 10000;
+    private final static String filename = "samples/small/test2.txt";
     private final static double RANDOM_CHANCE = 0.01;
     private final static double PROPORTION = 0.1;
     private final static double PROB_HEAVY = 0.5;
@@ -312,43 +312,44 @@ public class solver4 {
                 softFloats[c-1] = checkFloat(c, false);
 
                 // Also update unsat array and total cost
-                if (softFloats[c-1] >= 0 && unsat_indices[c-1] != -1) // i.e. if SAT and in unsat (we need to remove from unsat)
-                {
-                    // NOTE: This is why the unsat clause selection is APPROXIMATE LRU. 
-                    // When random soft clauses that get satisfied by flips need to be removed, 
-                    // the last elements get moved to essentially random positions, slightly messing up the order. 
-                    // It is by far the most performant way to handle this, 
-                    // with only a slight loss due to the LRU no longer being exact.
-                    // Plus: as we have been told, a bit of randomness is always good ;)
+                if (softFloats[c-1] >= 0 && unsat_indices[c-1] != -1) {
+                    // remove clause c from softUnsat (swap last element into its slot)
+                    int idxToRemove = unsat_indices[c-1];
+                    int lastIdx = unsat_end - 1;
+                    int lastClause = softUnsat[lastIdx];
 
-                    // remove if was unSAT and is now SAT                      
-                    softUnsat[unsat_indices[c-1]] = softUnsat[unsat_end-1]; // Move element at the end of the array to removed element (c)
-                    unsat_indices[softUnsat[unsat_end-1]-1] = unsat_indices[c-1]; // update lookup
+                    // move last element into removed slot (works also when idxToRemove == lastIdx)
+                    softUnsat[idxToRemove] = lastClause;
+                    unsat_indices[lastClause - 1] = idxToRemove;
+
+                    // mark this clause as not in unsat list
                     unsat_indices[c-1] = -1;
-                    unsat_end--; // decrease "end point"
 
+                    // shrink array
+                    unsat_end--;
+
+                    // adjust total cost
                     curTotalCost -= softCosts[c-1];
+
+                    // make sure unsat_remove is still valid
+                    if (unsat_end == 0) 
+                    {
+                        unsat_remove = 0;
+                    } 
+                    else if (unsat_remove >= unsat_end) 
+                    {
+                        // clamp / wrap - simplest: put pointer back in range
+                        unsat_remove = unsat_remove % unsat_end;
+                    }
                 }
-                else if (softFloats[c-1] < 0 && unsat_indices[c-1] == -1) // if clause is unSAT and not in unsat, we must add it
-                {
-                    // add if was SAT and is now unSAT
-                    softUnsat[unsat_end++] = c;
-
-                    // update lookup
-                    unsat_indices[c-1] = unsat_end-1;
-
+                else if (softFloats[c-1] < 0 && unsat_indices[c-1] == -1) {
+                    // add clause c to end of softUnsat
+                    softUnsat[unsat_end] = c;
+                    unsat_indices[c-1] = unsat_end;
+                    unsat_end++;
                     curTotalCost += softCosts[c-1];
                 }
             }
-
-            String print = "";
-            for (int i=0; i < unsat_end;i++)
-            {
-                print += softUnsat[i]+" ";
-            }
-            System.out.println("Unsat: "+print);
-            System.out.println("Assignment: "+vars.toString());
-            System.out.println("curTotalCost: "+String.valueOf(curTotalCost));
 
             // Exit if cost is 0
             if (curTotalCost==0)
