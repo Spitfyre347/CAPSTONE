@@ -41,7 +41,7 @@ public class solver4 {
     static int[] heavyClauses; // soft clauses with relatively large weights
 
     // Tracking stats
-    static long bestCost = Long.MAX_VALUE;
+    static long bestCost;
     static BitSet bestAssignment = new BitSet(numVars);
     static long curTotalCost;
 
@@ -142,6 +142,9 @@ public class solver4 {
 
             if (calcHeavy) {averageCost += softCosts[c-1];}
         }
+
+        bestCost=curTotalCost;
+        bestAssignment = (BitSet) vars.clone();
 
         if (calcHeavy)
         {
@@ -378,6 +381,8 @@ public class solver4 {
                     start = softIndices[c-1];
                     end = softIndices[c-1+1];
                     v = softLiterals[start + random.nextInt(end-start)];
+                    vsign = (v<0) ? -1 : 1;
+                    v = vsign*v; // get |v|
                     
                     vars.flip(v-1);
                 }
