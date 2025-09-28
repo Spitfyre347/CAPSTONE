@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Scanner;
+import java.util.Random;
 
 public class CapstoneFileReader {
 
@@ -316,7 +316,7 @@ public class CapstoneFileReader {
         //initialSol = InitialSolution(false, true, 2); // Soft optimize off, optimize on, maxFaults = 2
         //System.out.println("Initial solution found: " + Arrays.toString(initialSol));
 
-        initialSol = RandomRestarts(insol, 5); // Soft optimize off, optimize on, maxFaults = 2
+        initialSol = RandomRestarts(insol, numVariables); // Soft optimize off, optimize on, maxFaults = 2
         System.out.println("Initial solution found: " + Arrays.toString(initialSol));
 
 
@@ -950,6 +950,24 @@ public class CapstoneFileReader {
         int prevVars = Integer.MAX_VALUE; 
         int faults = 0;
 
+        int[] randPicks = new int[numVariables]; // Random shuffled arrangemnet of the variables (prevents picking same random var until all have been picked)
+        int previousPick = 0;
+        for (int i = 0; i < numVariables; i++) {
+            randPicks[i] = i + 1;
+        }
+
+        // Shuffle using Fisher–Yates
+        Random rand = new Random();
+        for (int i = numVariables - 1; i > 0; i--) {
+            int j = rand.nextInt(i + 1); // random index 0..i
+            // swap numbers[i] and numbers[j]
+            int temp = randPicks[i];
+            randPicks[i] = randPicks[j];
+            randPicks[j] = temp;
+        }
+        System.out.println("THE THANGS: " + Arrays.toString(randPicks));
+        
+
         // Run until no progress has been made with the number of unsatisfied hard literals, maxFaults times consecutively
         while (true){
             // Step 2) Generate list of unsatisfied hard clauses, and their floats
@@ -1000,6 +1018,7 @@ public class CapstoneFileReader {
 
             int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
 
+            
             for (int i = 0; i < varsInClause.length; i++){
                 int myVar = varsInClause[i]; // Variable 
                 if (debug)
@@ -1019,18 +1038,33 @@ public class CapstoneFileReader {
 
                 int countIfFlipped = altunsatClses.length;
                 int countIfNot = theUnsatClauses.length;
-                
+
+                // Calculate difference in unsat clause count if flipped
+                flipDifference[i][1] =  countIfNot - countIfFlipped; // Positive value means flipping helps
+
+
+     
 
                 if (debug){
                     System.out.println("If flipped: |" + Arrays.toString(altunsatClses[0]) + "| with count " + countIfFlipped);
                     System.out.println("If not flipped: |" + Arrays.toString(theUnsatClauses[0])  + "| with count " + countIfNot);
-                }
-
-
-                // Calculate difference in unsat clause count if flipped
-                flipDifference[i][1] =  countIfNot - countIfFlipped; // Positive value means flipping helps
+                } 
             }
 
+
+            // DEPRECATED VERSION: Based on total number of variables, rather than total float
+            if (prevVars <= totalVarCount){ // No progress made
+                faults++;
+            }                
+            else{
+                faults = 0;
+                prevVars = totalVarCount;
+            }
+
+            if (faults >= maxFaults){ // No progress made in maxFault iterations, so break
+                System.out.println("No progress made in " + maxFaults + " iterations, ending initial solution search");
+                return initialSol;
+            }
 
             // Find variable with best hard clause count
             int maxFlips = Integer.MIN_VALUE;
@@ -1044,8 +1078,13 @@ public class CapstoneFileReader {
             
             if (maxFlips <= 0){
                 if (debug)
-                    System.out.println("No beneficial flips found, defaulting to first variable in clause");
-                inds = 0; // Default to first variable in clause if no beneficial flips found
+                    System.out.println("No beneficial flips found, picking arbitrary variable in clause");
+                
+                while (previousPick >= flipDifference.length) // Picks random variable in the class not recently picked
+                    previousPick = (previousPick+1) % numVariables; 
+                
+                inds = previousPick;
+                previousPick = (previousPick+1) % numVariables;
             }
 
             if (debug)
@@ -1053,24 +1092,9 @@ public class CapstoneFileReader {
 
             // Flip variable with best hard count
             initialSol[Math.abs(flipDifference[inds][0])-1] *= -1; // Flip variable
-
-
-            if (prevVars <= totalVarCount){ // No progress made
-                faults++;
-            }
-            else{
-                faults = 0;
-                prevVars = totalVarCount;
-            }
-
-            if (faults >= maxFaults){ // No progress made in maxFault iterations, so break
-                System.out.println("No progress made in " + maxFaults + " iterations, ending initial solution search");
-                return initialSol;
-            }
         }
     }
     
-
 
     // Helper and auxiliary functions
     /*public String[] unsatClauses(int[] literals, int[] values, int[] indices, int[] assignments){
@@ -1357,7 +1381,6 @@ public class CapstoneFileReader {
     
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        Scanner sc = new Scanner(System.in);
         reader.InitializeClauses("test.txt", true);
     }
 
