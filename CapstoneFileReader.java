@@ -250,12 +250,7 @@ public class CapstoneFileReader {
     // Deprecated
     //public int[] getLiterals() { return literals; }
 
-    public boolean InitializeClauses(boolean Debug){
-
-
-         Scanner sc = new Scanner(System.in);
-        System.out.println("Please enter path of the file");
-        String path = sc.nextLine();
+    public boolean InitializeClauses(String path, boolean Debug){
         StartTimer();
         debug = Debug;
 
@@ -1363,7 +1358,7 @@ public class CapstoneFileReader {
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
         Scanner sc = new Scanner(System.in);
-        reader.InitializeClauses(true);
+        reader.InitializeClauses("test.txt", true);
     }
 
 }
