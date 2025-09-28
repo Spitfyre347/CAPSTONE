@@ -156,7 +156,7 @@ public class solver4 {
         // 3. SAT for each clause
         // 4. Average clause cost
         int averageCost = 0;
-        numHeavy = 0;
+        if (calcHeavy) {numHeavy = 0;}
         curTotalCost = 0;
         softUnsat = new int[numSoft];
         unsat_end = 0;
@@ -177,11 +177,10 @@ public class solver4 {
             if (calcHeavy) {averageCost += softCosts[c-1];}
         }
 
-        bestCost=curTotalCost;
-        bestAssignment = (BitSet) vars.clone();
-
         if (calcHeavy)
         {
+            bestCost=curTotalCost;
+            bestAssignment = (BitSet) vars.clone();
             averageCost = (int) (averageCost / numSoft);
 
             // Calculate relatively "heavy" clauses
