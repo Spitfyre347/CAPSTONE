@@ -47,7 +47,7 @@ public class solver4 {
 
     // Parameters
     private final static int T = 100000;
-    private final static String filename = "samples/small/test.txt";
+    private final static String filename = "test.txt";
     private final static double RANDOM_CHANCE = 0.01;
     private final static double PROPORTION = 0.1;
     private final static double PROB_HEAVY = 0.5;
@@ -346,9 +346,7 @@ public class solver4 {
             {
                 print += softUnsat[i]+" ";
             }
-            System.out.println("Unsat: "+print);
-            System.out.println("Assignment: "+vars.toString());
-            System.out.println("curTotalCost: "+String.valueOf(curTotalCost));
+            System.out.println("Unsat: "+print + "Assignment: "+vars.toString() + "curTotalCost: "+String.valueOf(curTotalCost));
 
             // Exit if cost is 0
             if (curTotalCost==0)
