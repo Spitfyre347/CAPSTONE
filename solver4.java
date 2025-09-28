@@ -47,7 +47,7 @@ public class solver4 {
 
     // Parameters
     private final static int T = 100000;
-    private final static String filename = "sample.wcard";
+    private final static String filename = "samples/small/test.txt";
     private final static double RANDOM_CHANCE = 0.01;
     private final static double PROPORTION = 0.1;
     private final static double PROB_HEAVY = 0.5;
@@ -61,7 +61,7 @@ public class solver4 {
     {
         // Read in wcard file 
         reader = new CapstoneFileReader();
-        boolean success = reader.InitializeClauses(filename, false)); 
+        boolean success = reader.InitializeClauses(filename, false); 
         
 
         if (!success) {
@@ -341,6 +341,15 @@ public class solver4 {
                 }
             }
 
+            String print = "";
+            for (int i=0; i < unsat_end;i++)
+            {
+                print += softUnsat[i]+" ";
+            }
+            System.out.println("Unsat: "+print);
+            System.out.println("Assignment: "+vars.toString());
+            System.out.println("curTotalCost: "+String.valueOf(curTotalCost));
+
             // Exit if cost is 0
             if (curTotalCost==0)
             {
@@ -370,7 +379,7 @@ public class solver4 {
                 vars = (BitSet) bestAssignment.clone();
 
                 // Flip PROPORTION of variables
-                numVarsToFlip = (int) PROPORTION * numVars;
+                numVarsToFlip = (int) (PROPORTION * numVars);
                 for (int i=0; i < numVarsToFlip; i++)
                 {
                     // With PROB_HEAVY chance, pick from only heavy clauses, otherwise pick from all of them
