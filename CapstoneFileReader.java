@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class CapstoneFileReader {
 
@@ -249,7 +250,12 @@ public class CapstoneFileReader {
     // Deprecated
     //public int[] getLiterals() { return literals; }
 
-    public void InitializeClauses(String path, boolean Debug){
+    public boolean InitializeClauses(boolean Debug){
+
+
+         Scanner sc = new Scanner(System.in);
+        System.out.println("Please enter path of the file");
+        String path = sc.nextLine();
         StartTimer();
         debug = Debug;
 
@@ -258,12 +264,12 @@ public class CapstoneFileReader {
 
         if (!success){
             System.err.println("Issue encountered during file read. Aborting...");
-            return;
+            return success;
         }
 
         if (clauses.length == 0){
             System.err.println("File read succesfully, though no clauses found. Aborting...");
-            return;
+            return success;
         }
 
         // File read successfully, proceed to optimization
@@ -327,6 +333,7 @@ public class CapstoneFileReader {
         }
 
         writeToFile("Preprocessing_Output.txt");
+        return success;
         
     }
 
@@ -1350,10 +1357,11 @@ public class CapstoneFileReader {
     }
 
     // Main method for quick testing
-    /* 
+    
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", true);
-    }*/
+        Scanner sc = new Scanner(System.in);
+        reader.InitializeClauses(true);
+    }
 
 }

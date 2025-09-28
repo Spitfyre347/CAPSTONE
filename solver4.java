@@ -50,11 +50,16 @@ public class solver4 {
     // MAIN METHODS //
     //////////////////
 
-    public static void setup()
+    public static boolean setup()
     {
         // Read in wcard file 
         reader = new CapstoneFileReader();
-        reader.InitializeClauses("sample.wcard", false); 
+        boolean success = reader.InitializeClauses(false); 
+        
+
+        if (!success) {
+            return success;
+        }
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -91,6 +96,8 @@ public class solver4 {
         {
             if (inital_sol[k]==1) {vars.set(k);}
         }
+
+        return success;
 
     }
 
@@ -415,12 +422,16 @@ public class solver4 {
     
     public static void main(String[] args) 
     {
-        setup();
-        initialize_solver(true);
-        StartTimer();
-        solve();
-        StopTimer();
-        output();        
+        boolean success = setup();
+
+        if (success) {
+            initialize_solver(true);
+            StartTimer();
+            solve();
+            StopTimer();
+            output();  
+        }
+              
     }
 
     ////////////////////
