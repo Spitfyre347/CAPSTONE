@@ -61,7 +61,7 @@ public class solver4 {
     {
         // Read in wcard file 
         reader = new CapstoneFileReader();
-        boolean success = reader.InitializeClauses(false)); 
+        boolean success = reader.InitializeClauses(filename, false)); 
         
 
         if (!success) {
