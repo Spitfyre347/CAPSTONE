@@ -991,7 +991,7 @@ public class CapstoneFileReader {
             int[] varsInClause = new int[length];
             for (int i = 0; i < length; i++) {
                 varsInClause[i] = hardLits[start + i];
-}
+            }
 
 
             int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
