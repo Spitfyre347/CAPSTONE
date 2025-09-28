@@ -577,7 +577,8 @@ public class CapstoneFileReader {
         int n = clauseLengths.length;
         for (i = 0; i < n - 1; i++) {
             for (int j = 0; j < n - i - 1; j++) {
-                if (clauseLengths[j] > clauseLengths[j + 1]) {
+                if (clauseLengths[j] > clauseLengths[j + 1] ||
+                (clauseLengths[j] == clauseLengths[j + 1] && clauses[j].compareTo(clauses[j + 1]) > 0)) { // Sorts by length and puts identical clauses together
                     // swap clauses
                     String sTemp = clauses[j];
                     clauses[j] = clauses[j+1];
@@ -604,6 +605,7 @@ public class CapstoneFileReader {
                     iTemp = values[j];
                     values[j] = values[j + 1];
                     values[j + 1] = iTemp;
+                
                 }
             }
         }
@@ -1350,10 +1352,10 @@ public class CapstoneFileReader {
     }
 
     // Main method for quick testing
-    /* 
+     
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
         reader.InitializeClauses("thirdtest.txt", true);
-    }*/
+    }
 
 }
