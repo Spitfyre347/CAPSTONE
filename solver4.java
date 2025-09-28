@@ -1,6 +1,5 @@
 import java.util.BitSet;
 import java.util.Random;
-import java.util.ArrayList;
 
 public class solver4 {
 
@@ -24,8 +23,8 @@ public class solver4 {
     static int[] softCosts; // soft clause costs
     static int[] softFloats; // floats for each soft clause
     static int[] hardFloats; // floats for each hard clause
-    static ArrayList<Integer> unsat; // unSAT soft clauses
-    static int[] unsat_arr; // unSAT soft clauses as primitive array
+    static int[] hardUnsat; // unSAT hard clauses
+    static int[] softUnsat; // unSAT soft clauses
     static int unsat_end; // keep track of end of unsat array
     static int unsat_remove; // element to be removed next
     static int[] unsat_indices; // lookup table to find index of unsat clause
@@ -50,7 +49,7 @@ public class solver4 {
     {
         // Read in wcard file 
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("sample1.wcard", false); 
+        reader.InitializeClauses("sample.wcard", false); 
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -87,7 +86,6 @@ public class solver4 {
             if (inital_sol[k]==1) {vars.set(k);}
         }
 
-
     }
 
     public static void initialize_solver()
@@ -103,8 +101,7 @@ public class solver4 {
         // 2. float for each clause
         // 3. SAT for each clause
         curTotalCost = 0;
-        unsat = new ArrayList<>();
-        unsat_arr = new int[numSoft];
+        softUnsat = new int[numSoft];
         unsat_end = 0;
         unsat_remove = 0;
         boolean sat;
@@ -114,7 +111,7 @@ public class solver4 {
             sat = checkSATFloat(c, false); // if current clause is unSAT, add to array
             if (!sat) 
             {
-                unsat_arr[unsat_end++] = c; // add to unsat array
+                softUnsat[unsat_end++] = c; // add to unsat array
                 unsat_indices[c-1] = unsat_end-1; // update lookup
                 curTotalCost += softCosts[c-1]; // Add to total cost if not SAT
             }
@@ -131,8 +128,8 @@ public class solver4 {
         Random random = new Random();
 
         // Set up make and break scores for each variable
-        long[] makeScores;
-        long[] breakScores;
+        long[] makeScores = new long[numVars];
+        long[] breakScores = new long[numVars];
 
         // Temp variables
         int t = 0, v = 0, c = 0;
@@ -191,8 +188,8 @@ public class solver4 {
                         // Plus: as we have been told, a bit of randomness is always good ;)
 
                         // remove if was unSAT and is now SAT                      
-                        unsat_arr[unsat_indices[c-1]] = unsat_arr[unsat_end-1]; // Move element at the end of the array to removed element (c)
-                        unsat_indices[unsat_arr[unsat_end-1]-1] = unsat_indices[c-1]; // update lookup
+                        softUnsat[unsat_indices[c-1]] = softUnsat[unsat_end-1]; // Move element at the end of the array to removed element (c)
+                        unsat_indices[softUnsat[unsat_end-1]-1] = unsat_indices[c-1]; // update lookup
                         unsat_indices[c-1] = -1;
                         unsat_end--; // decrease "end point"
 
@@ -201,7 +198,7 @@ public class solver4 {
                     else if (softFloats[c-1] < 0 && unsat_indices[c-1] == -1) // if clause is unSAT and not in unsat, we must add it
                     {
                         // add if was SAT and is now unSAT
-                        unsat_arr[unsat_end++] = c;
+                        softUnsat[unsat_end++] = c;
 
                         // update lookup
                         unsat_indices[c-1] = unsat_end-1;
@@ -234,10 +231,6 @@ public class solver4 {
             if (t > T) {System.out.println("Max time reached"); break;} // if time is up, end run
             //if (t-lastImproved>1000) {System.out.println("No improvement, timeout at t = "+String.valueOf(t)); break;} // if no improvements have been made in a while, break
 
-            // Convert unsat ArrayList into int[]
-            //unsat_arr = new int[unsat.size()];
-            //for (int i = 0; i < unsat.size(); i++) {unsat_arr[i] = unsat.get(i);}
-
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
             {
@@ -262,26 +255,24 @@ public class solver4 {
             else 
             {
                 // Pick unsat soft clause with weighted probability:
-                //curClause = pickClause(unsat_arr, random);
+                //curClause = pickClause(softUnsat, random);
                 
                 // Pick unsat clause using approx LRU
                 removed = unsat_remove;
                 unsat_remove = (unsat_remove+1) % unsat_end; // cycle through unsat array
-                curClause = unsat_arr[removed];
+                curClause = softUnsat[removed];
                 
-                // Move last element of unsat_arr to position of element just removed 
-                unsat_arr[removed] = unsat_arr[unsat_end-1];
-                unsat_indices[unsat_arr[unsat_end-1]-1] = removed; // update index 
+                // Move last element of softUnsat to position of element just removed 
+                softUnsat[removed] = softUnsat[unsat_end-1];
+                unsat_indices[softUnsat[unsat_end-1]-1] = removed; // update index 
 
                 // Move selected clause to end
-                unsat_arr[unsat_end-1] = curClause;    
+                softUnsat[unsat_end-1] = curClause;    
                 unsat_indices[curClause-1] = unsat_end-1;            
 
                 // Get literals involved in selected clause:
                 start = softIndices[curClause-1];
                 end = softIndices[curClause-1+1];
-                breakScores = new long[end-start];
-                makeScores = new long[end-start];
 
                 // Reset heuristic variables
                 bestScore = Long.MIN_VALUE;
@@ -294,7 +285,7 @@ public class solver4 {
                     vsign = (v<0) ? -1 : 1;
                     v = vsign*v; // get |v|
 
-                    // Initialise make and break scores for index i of v
+                    // Initialise make and break scores for index i of v (index runs from 0 to num literals in clause)
                     breakScores[i-start] = 0;
                     makeScores[i-start] = 0;
 
