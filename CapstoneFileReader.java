@@ -963,8 +963,6 @@ public class CapstoneFileReader {
                 floatsArr[i] = theUnsatClauses[i][1];
             }
 
-            System.out.println("Unsatisfied clause indices: " + Arrays.toString(numbers));
-            System.out.println("Unsatisfied clause floats: " + Arrays.toString(floatsArr));
 
             if (numbers.length == 0) // All hard clauses are satisfied
                 return initialSol;
@@ -985,7 +983,16 @@ public class CapstoneFileReader {
 
 
             // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
-            int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
+
+            int start = hardIndices[numbers[minInd]];
+            int end = hardIndices[numbers[minInd] + 1];
+            int length = end - start;
+
+            int[] varsInClause = new int[length];
+            for (int i = 0; i < length; i++) {
+                varsInClause[i] = hardLits[start + i];
+}
+
 
             int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
 
@@ -1269,7 +1276,6 @@ public class CapstoneFileReader {
             literals[start + pos] = Integer.parseInt(in[i]);
             pos++;
         }
-        System.out.println("Unorganized: " + Arrays.toString(literals));
     }
 
 
@@ -1346,7 +1352,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", false);
+        reader.InitializeClauses("thirdtest.txt", true);
     }
 
 }
