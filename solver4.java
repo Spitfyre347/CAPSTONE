@@ -3,6 +3,9 @@ import java.util.Random;
 
 public class solver4 {
 
+    // File reader must be global
+    static CapstoneFileReader reader;
+
     // Max runtime
     private static long startTime, endTime;
     static double scaling = 1;
@@ -13,6 +16,7 @@ public class solver4 {
     static int numSoft; // number of soft clauses
     static int numHard; // number of hard clauses
     static int hardCost; // cost of hard clause
+    static int numHeavy; // number of "heavy" clauses
 
     // Integer arrays
     static int[] softIndices; // indices used to locate literals in a specific soft clause in softLiterals 
@@ -34,6 +38,7 @@ public class solver4 {
     static int[] softClauses; // variables expressed ito the soft clauses they are found in
     static int[] hardClauseIndices; // indices to locate hard clauses containing a specific variable
     static int[] hardClauses; // variables expressed ito the hard clauses they are found in
+    static int[] heavyClauses; // soft clauses with relatively large weights
 
     // Tracking stats
     static long bestCost = Long.MAX_VALUE;
@@ -50,11 +55,16 @@ public class solver4 {
     // MAIN METHODS //
     //////////////////
 
-    public static void setup()
+    public static boolean setup()
     {
         // Read in wcard file 
-        CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("test.txt", false); 
+        reader = new CapstoneFileReader();
+        boolean success = reader.InitializeClauses(false); 
+        
+
+        if (!success) {
+            return success;
+        }
 
         // Read variables directly from File Reader
         numVars = reader.getNumVars();
@@ -79,6 +89,7 @@ public class solver4 {
         softFloats = new int[numSoft];
         hardFloats = new int[numHard];
         unsat_indices = new int[numSoft];
+        heavyClauses = new int[numSoft];
 
         // Create Boolean variables
         vars = new BitSet(numVars);
@@ -91,9 +102,11 @@ public class solver4 {
             if (inital_sol[k]==1) {vars.set(k);}
         }
 
+        return success;
+
     }
 
-    public static void initialize_solver()
+    public static void initialize_solver(boolean calcHeavy)
     {
         // Calculate float of hard clauses
         for (int c=1; c <= numHard; c++)
@@ -105,6 +118,9 @@ public class solver4 {
         // 1. total cost of initial state
         // 2. float for each clause
         // 3. SAT for each clause
+        // 4. Average clause cost
+        int averageCost = 0;
+        numHeavy = 0;
         curTotalCost = 0;
         softUnsat = new int[numSoft];
         unsat_end = 0;
@@ -121,10 +137,20 @@ public class solver4 {
                 curTotalCost += softCosts[c-1]; // Add to total cost if not SAT
             }
             else {unsat_indices[c-1]=-1;}
+
+            if (calcHeavy) {averageCost += softCosts[c-1];}
         }
 
-        // Ouput initial cost
-        System.out.println("Initial cost: "+String.valueOf(curTotalCost));
+        if (calcHeavy)
+        {
+            averageCost = (int) (averageCost / numSoft);
+
+            // Calculate relatively "heavy" clauses
+            for (int c=1; c <= numSoft; c++)
+            {
+                if (softCosts[c-1] > averageCost) {heavyClauses[numHeavy++] = c;}
+            }
+        }
     }
 
     public static void solve()
@@ -144,95 +170,34 @@ public class solver4 {
         boolean skip = false;
         int sign = 1, vsign = 1;
         int removed;
+        int numVarsToFlip;
+        int[] vars_arr = new int[numVars];
 
         // To keep track of best score
         long bestScore = 0;
         int bestFlip = -1;
 
+        // Parameters
+        final double RANDOM_CHANCE = 0.01;
+        final double PROPORTION = 0.1;
+        final double PROB_HEAVY = 0.5;
+        final int RESTART_INTERVAL = 50000;
 
         // MAIN LOOP
         while (true)
         {
-            // Algorithm:
-            // update floats - ONLY AFFECTED CLAUSES
-            // calculate cost and update best assignment - ONLY AFFECTED CLAUSES
-            // pick unsat soft clause, with prob weighted by cost
-            // calculate break and make costs for variables in clause
-            // outlaw any flips that violate hard clauses
-            // flip:
-            // a) variable with highest score: make - break
-            // b) with small chance, random flip            
-
-            if (bestFlip != -1)
-            {
-                // Update floats - ONLY AFFECTED CLAUSES
-                // Calculate float of hard clauses
-                for (int i = hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
-                {
-                    sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
-                    c = hardClauses[i]*sign;
-                    hardFloats[c-1] = checkFloat(c, true);
-                }
-                // Calculate float of soft clauses
-                for (int i = softClauseIndices[bestFlip-1]; i < softClauseIndices[bestFlip-1+1]; i++)
-                {
-                    sign = (softClauses[i] < 0) ? -1 : 1;
-                    c = softClauses[i]*sign; // get |clause|
-                    softFloats[c-1] = checkFloat(c, false);
-
-                    // Also update unsat array and total cost
-                    if (softFloats[c-1] >= 0 && unsat_indices[c-1] != -1) // i.e. if SAT and in unsat (we need to remove from unsat)
-                    {
-                        // NOTE: This is why the unsat clause selection is APPROXIMATE LRU. 
-                        // When random soft clauses that get satisfied by flips need to be removed, 
-                        // the last elements get moved to essentially random positions, slightly messing up the order. 
-                        // It is by far the most performant way to handle this, 
-                        // with only a slight loss due to the LRU no longer being exact.
-                        // Plus: as we have been told, a bit of randomness is always good ;)
-
-                        // remove if was unSAT and is now SAT                      
-                        softUnsat[unsat_indices[c-1]] = softUnsat[unsat_end-1]; // Move element at the end of the array to removed element (c)
-                        unsat_indices[softUnsat[unsat_end-1]-1] = unsat_indices[c-1]; // update lookup
-                        unsat_indices[c-1] = -1;
-                        unsat_end--; // decrease "end point"
-
-                        curTotalCost -= softCosts[c-1];
-                    }
-                    else if (softFloats[c-1] < 0 && unsat_indices[c-1] == -1) // if clause is unSAT and not in unsat, we must add it
-                    {
-                        // add if was SAT and is now unSAT
-                        softUnsat[unsat_end++] = c;
-
-                        // update lookup
-                        unsat_indices[c-1] = unsat_end-1;
-
-                        curTotalCost += softCosts[c-1];
-                    }
-                }
-            }
-
-            // Exit if cost is 0
-            if (curTotalCost==0)
-            {
-                bestCost = curTotalCost;
-                bestAssignment = (BitSet)vars.clone();
-                System.out.println("Solution with cost 0 found.");
-                break;
-            }
-
-            // If current assignment is the best so far, save it
-            if (curTotalCost < bestCost)
-            {
-                bestCost = curTotalCost;
-                lastImproved = t;
-                bestAssignment = (BitSet)vars.clone();
-                System.out.println("New Best Cost: " + Long.toString(bestCost));
-            }
-
-            t++;
-
-            if (t > T) {System.out.println("Max time reached"); break;} // if time is up, end run
-            //if (t-lastImproved>1000) {System.out.println("No improvement, timeout at t = "+String.valueOf(t)); break;} // if no improvements have been made in a while, break
+            //  Algorithm:
+            //  Repeat:
+            //      pick unsat soft clause using approximate LRU algorithm
+            //      calculate break and make costs for variables in clause, weighted by clause cost
+            //      outlaw any flips that violate hard clauses
+            //      flip:
+            //          a) variable with highest score: make - break
+            //          b) with small chance, random flip
+            //      update floats for affected clauses
+            //      calculate cost and update best assignment (only consider affected clauses)
+            //      exit if time is up
+            //      * If no improvements have been made in a while, perform smart random restart *
 
             // Small chance for random flip:
             if (random.nextDouble() < RANDOM_CHANCE)
@@ -256,10 +221,7 @@ public class solver4 {
             }
             // Otherwise take greedy flip
             else 
-            {
-                // Pick unsat soft clause with weighted probability:
-                //curClause = pickClause(softUnsat, random);
-                
+            {                
                 // Pick unsat clause using approx LRU
                 removed = unsat_remove;
                 unsat_remove = (unsat_remove+1) % unsat_end; // cycle through unsat array
@@ -334,6 +296,117 @@ public class solver4 {
 
             // Flip selected variable
             vars.flip(bestFlip-1);
+
+            // Update floats - ONLY AFFECTED CLAUSES
+            // Calculate float of hard clauses
+            for (int i = hardClauseIndices[bestFlip-1]; i < hardClauseIndices[bestFlip-1+1]; i++)
+            {
+                sign = (hardClauses[i] < 0) ? -1 : 1; // check sign of literal
+                c = hardClauses[i]*sign;
+                hardFloats[c-1] = checkFloat(c, true);
+            }
+            // Calculate float of soft clauses
+            for (int i = softClauseIndices[bestFlip-1]; i < softClauseIndices[bestFlip-1+1]; i++)
+            {
+                sign = (softClauses[i] < 0) ? -1 : 1;
+                c = softClauses[i]*sign; // get |clause|
+                softFloats[c-1] = checkFloat(c, false);
+
+                // Also update unsat array and total cost
+                if (softFloats[c-1] >= 0 && unsat_indices[c-1] != -1) // i.e. if SAT and in unsat (we need to remove from unsat)
+                {
+                    // NOTE: This is why the unsat clause selection is APPROXIMATE LRU. 
+                    // When random soft clauses that get satisfied by flips need to be removed, 
+                    // the last elements get moved to essentially random positions, slightly messing up the order. 
+                    // It is by far the most performant way to handle this, 
+                    // with only a slight loss due to the LRU no longer being exact.
+                    // Plus: as we have been told, a bit of randomness is always good ;)
+
+                    // remove if was unSAT and is now SAT                      
+                    softUnsat[unsat_indices[c-1]] = softUnsat[unsat_end-1]; // Move element at the end of the array to removed element (c)
+                    unsat_indices[softUnsat[unsat_end-1]-1] = unsat_indices[c-1]; // update lookup
+                    unsat_indices[c-1] = -1;
+                    unsat_end--; // decrease "end point"
+
+                    curTotalCost -= softCosts[c-1];
+                }
+                else if (softFloats[c-1] < 0 && unsat_indices[c-1] == -1) // if clause is unSAT and not in unsat, we must add it
+                {
+                    // add if was SAT and is now unSAT
+                    softUnsat[unsat_end++] = c;
+
+                    // update lookup
+                    unsat_indices[c-1] = unsat_end-1;
+
+                    curTotalCost += softCosts[c-1];
+                }
+            }
+
+            // Exit if cost is 0
+            if (curTotalCost==0)
+            {
+                bestCost = curTotalCost;
+                bestAssignment = (BitSet)vars.clone();
+                System.out.println("Solution with cost 0 found.");
+                break;
+            }
+
+            // If current assignment is the best so far, save it
+            if (curTotalCost < bestCost)
+            {
+                bestCost = curTotalCost;
+                lastImproved = t;
+                bestAssignment = (BitSet)vars.clone();
+                System.out.println("New Best Cost: " + Long.toString(bestCost));
+            }
+
+            t++;
+
+            if (t > T) {System.out.println("Max time reached"); break;} // if time is up, end run
+
+            // If no improvement has occured in a while, perform restart:
+            if (t-lastImproved>=RESTART_INTERVAL) 
+            {
+                // Start with best assignment found so far
+                vars = (BitSet) bestAssignment.clone();
+
+                // Flip PROPORTION of variables
+                numVarsToFlip = (int) PROPORTION * numVars;
+                for (int i=0; i < numVarsToFlip; i++)
+                {
+                    // With PROB_HEAVY chance, pick from only heavy clauses, otherwise pick from all of them
+                    if (random.nextDouble() < PROB_HEAVY) {c = heavyClauses[random.nextInt(numHeavy)];}
+                    else {c = random.nextInt(numSoft)+1;}
+                    
+                    // Pick random var from clause uniformly
+                    start = softIndices[c-1];
+                    end = softIndices[c-1+1];
+                    v = softLiterals[start + random.nextInt(end-start)];
+                    
+                    vars.flip(v-1);
+                }
+
+                // Convert BitSet to int[]
+                for (int i = 0; i < numVars; i++)
+                {
+                    vars_arr[i] = (vars.get(i)) ? 1 : -1; 
+                }
+
+                // Repair hard clauses
+                vars_arr = reader.RandomRestarts(vars_arr, 5);
+
+                // Convert int[] back to BitSet
+                for (int i = 0; i < numVars; i++)
+                {
+                    if (vars_arr[i]==1) {vars.set(i);}
+                    else {vars.clear(i);}
+                }
+
+                // Recalculate floats, cost, unsat array, etc.
+                initialize_solver(false);
+                lastImproved = t;
+                System.out.println("Restart performed at t = "+String.valueOf(t)); 
+            }
         }
     }
 
@@ -354,12 +427,16 @@ public class solver4 {
     
     public static void main(String[] args) 
     {
-        setup();
-        initialize_solver();
-        StartTimer();
-        solve();
-        StopTimer();
-        output();        
+        boolean success = setup();
+
+        if (success) {
+            initialize_solver(true);
+            StartTimer();
+            solve();
+            StopTimer();
+            output();  
+        }
+              
     }
 
     ////////////////////
