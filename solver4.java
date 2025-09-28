@@ -47,7 +47,7 @@ public class solver4 {
 
     // Parameters
     private final static int T = 100000;
-    private final static String filename = "sample.wcard";
+    private final static String filename = "test.txt";
     private final static double RANDOM_CHANCE = 0.01;
     private final static double PROPORTION = 0.1;
     private final static double PROB_HEAVY = 0.5;
@@ -61,7 +61,7 @@ public class solver4 {
     {
         // Read in wcard file 
         reader = new CapstoneFileReader();
-        boolean success = reader.InitializeClauses(filename, false)); 
+        boolean success = reader.InitializeClauses(filename, false); 
         
 
         if (!success) {
