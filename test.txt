@@ -1,7 +1,33 @@
-p wcard 5 6 100
-12 1 2 3 0
-99 4 5 0
-100 1 2 3 4 5 <= 1
-100 -1 -2 -3 -4 -5 >= 4
-3 1 2 3 4 = 1
-1 -2 -3 -4 >= 3
+c comment lines start with a c 
+c example file with 5 variables and 4 clauses 
+c p=problem wcard=in the Weighted CARDinality format 
+c containing 5 variables, 4 clauses and having a hard 
+c ’cost’ of 100 
+p wcard 5 7 100 
+c note the p line need not be the first line 
+c the magic hard marker 100 should be higher than 
+c all the soft costs 
+12 1 2 3 0 
+c a soft clause (cost = 12 < hard cost = 100) with 
+c three variables a,b,c >= 1, hence terminated by a 0 
+99 4 5 0 
+c another soft clause with cost 99 
+100 1 2 3 4 5 <= 1 
+c a hard clause, because the magic cost = 100 
+c ’at most’ one of the variables 
+c a,b,c,d,e can be true. 
+100 -1 -2 -3 -4 -5 >= 4 
+c another hard clause (100) exactly the same 
+c clause as before, but stated 
+c as an ’at least’ constraint 
+c because all SAT clauses are ‘at least 1’, we can 
+c now see that this hard clause correctly 
+c contradicts the soft clauses, as we would expect. 
+3 1 2 3 4 = 1 
+c an exactly soft clause, can be split into 2 clauses line so 
+3 1 2 3 4 >= 1 
+3 -1 -2 -3 -4 >= 3 
+c However! if you do this, you will have split a single soft requirement into 2. 
+c this means you cannot accept this transformation; only hard clauses can be split this way. 
+c If you find 'exactly' soft clauses you must either: reject the input file, or build in support  
+c in your program to process soft exactly clauses as-is without splitting them in two.
