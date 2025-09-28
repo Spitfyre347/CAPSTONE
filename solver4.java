@@ -49,7 +49,9 @@ public class solver4 {
     private final static int T = 100000;
     private final static String filename = "sample.wcard";
     private final static double RANDOM_CHANCE = 0.01;
-    
+    private final static double PROPORTION = 0.1;
+    private final static double PROB_HEAVY = 0.5;
+    private final static int RESTART_INTERVAL = 50000;
 
     //////////////////
     // MAIN METHODS //
@@ -59,7 +61,7 @@ public class solver4 {
     {
         // Read in wcard file 
         reader = new CapstoneFileReader();
-        boolean success = reader.InitializeClauses(false); 
+        boolean success = reader.InitializeClauses(false)); 
         
 
         if (!success) {
@@ -176,12 +178,6 @@ public class solver4 {
         // To keep track of best score
         long bestScore = 0;
         int bestFlip = -1;
-
-        // Parameters
-        final double RANDOM_CHANCE = 0.01;
-        final double PROPORTION = 0.1;
-        final double PROB_HEAVY = 0.5;
-        final int RESTART_INTERVAL = 50000;
 
         // MAIN LOOP
         while (true)

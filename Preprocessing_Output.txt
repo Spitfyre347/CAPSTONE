@@ -1,38 +1,38 @@
 CapstoneFileReader - Parsed Input Results 
 ------------------------------------------
 numVariables = 5
-numClauses = 6
+numClauses = 5
 hardCost = 100
-costs = [99, 1, 12, 3, 3, 100]
-literals = [4, 5, -2, -3, -4, 1, 2, 3, -1, -2, -3, -4, 1, 2, 3, 4, -1, -2, -3, -4, -5]
-values = [1, 3, 1, 3, 1, 4]
-indices = [0, 2, 5, 8, 12, 16, 21]
-(clauses = [45>=1 (99), -2-3-4>=3 (1), 123>=1 (12), -1-2-3-4>=3 (3), 1234>=1 (3), -1-2-3-4-5>=4 (100)])
+costs = [99, 12, 3, 3, 100]
+literals = [4, 5, 1, 2, 3, -1, -2, -3, -4, 1, 2, 3, 4, -1, -2, -3, -4, -5]
+values = [1, 1, 3, 1, 4]
+indices = [0, 2, 5, 9, 13, 18]
+(clauses = [45>=1 (99), 123>=1 (12), -1-2-3-4>=3 (3), 1234>=1 (3), -1-2-3-4-5>=4 (100)])
 
-Soft Costs: [99, 1, 12, 3, 3]
-Soft Values: [1, 3, 1, 3, 1]
+Soft Costs: [99, 12, 3, 3]
+Soft Values: [1, 1, 3, 1]
 Hard Values: [4]
-(Outer Soft Indices: [0, 2, 5, 8, 12])
-(Outer Hard Indices: [16])
-Soft Literals: [4, 5, -2, -3, -4, 1, 2, 3, -1, -2, -3, -4, 1, 2, 3, 4]
+(Outer Soft Indices: [0, 2, 5, 9])
+(Outer Hard Indices: [13])
+Soft Literals: [4, 5, 1, 2, 3, -1, -2, -3, -4, 1, 2, 3, 4]
 Hard Literals: [-1, -2, -3, -4, -5]
-Soft Indices: [0, 2, 5, 8, 12, 16]
+Soft Indices: [0, 2, 5, 9, 13]
 Hard Indices: [0, 5]
 
-Raw Soft Clauses Array: [[0, 0, 3, -4, 5], [0, -2, 3, -4, 5], [0, -2, 3, -4, 5], [1, -2, 0, -4, 5], [1, 0, 0, 0, 0]]
-Soft Clauses by Var: [3, -4, 5, -2, 3, -4, 5, -2, 3, -4, 5, 1, -2, -4, 5, 1]
-Soft Clause Indices by Var: [0, 3, 7, 11, 15, 16]
+Raw Soft Clauses Array: [[0, 2, -3, 4], [0, 2, -3, 4], [0, 2, -3, 4], [1, 0, -3, 4], [1, 0, 0, 0]]
+Soft Clauses by Var: [2, -3, 4, 2, -3, 4, 2, -3, 4, 1, -3, 4, 1]
+Soft Clause Indices by Var: [0, 3, 6, 9, 12, 13]
 Raw Hard Clauses Array: [[-1], [-1], [-1], [-1], [-1]]
 Hard Clauses by Var: [-1, -1, -1, -1, -1]
 Hard Clause Indices by Var: [0, 1, 2, 3, 4, 5]
 
 First Initial Soln: null
-First Soft Cost: 4
+First Soft Cost: 3
 Unsatisfied Hard Clauses: [0]
-Unsatisfied Floats: [2]
+Unsatisfied Floats: [3]
 Variables in unsatisfied hard clauses: null
 Cost of flipping each variable: null
-Initial Soln: [1, 1, 1, -1, 1]
-Soft Cost: 4
+Initial Soln: [1, 1, 1, 1, 1]
+Soft Cost: 3
 
-Elapsed time: 17 ms
+Elapsed time: 87 ms
