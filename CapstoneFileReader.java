@@ -26,6 +26,7 @@ public class CapstoneFileReader {
 
     private int[][] hardBulkyArr;
     private int[][] softBulkyArr;
+
     private int[] softClauses = null, hardClauses = null;
     private int[] softClauseInds = null, hardClauseInds = null;
 
@@ -286,8 +287,38 @@ public class CapstoneFileReader {
         // Initial preprocessing complete, proceed to initial solution calcualtions
         System.out.println("Arrays optimized, proceeding to intial solution");
 
-        initialSol = InitialSolution(false, true, 2); // Soft optimize off, optimize on, maxFaults = 2
+        double rand = Math.random();
+        int[] insol = new int[numVariables];
+
+        if (rand < 0.3){ 
+            for (int i = 0; i < insol.length; i++) { insol[i] = -1;} // Defaults all to false (-1)
+            if (debug)
+                System.out.println("Initial solution: All false");
+        }
+        else if (rand < 0.6){
+            for (int i = 0; i < insol.length; i++) { insol[i] = 1;} // Defaults all to true (1)
+            if (debug)
+                System.out.println("Initial solution: All true");
+        }
+        else{
+            for (int i = 0; i < insol.length; i++) { // Randomly assigns each variable
+                if (Math.random() < 0.5)
+                    insol[i] = -1;
+                else
+                    insol[i] = 1;
+            }
+            if (debug)
+                System.out.println("Initial solution: Random");
+        }
+
+
+        //initialSol = InitialSolution(false, true, 2); // Soft optimize off, optimize on, maxFaults = 2
+        //System.out.println("Initial solution found: " + Arrays.toString(initialSol));
+
+        initialSol = RandomRestarts(insol, 2); // Soft optimize off, optimize on, maxFaults = 2
         System.out.println("Initial solution found: " + Arrays.toString(initialSol));
+
+
         System.out.println("Preprocessing complete. >:)");
         StopTimer();
 
@@ -296,7 +327,6 @@ public class CapstoneFileReader {
         }
 
         writeToFile("Preprocessing_Output.txt");
-
         
     }
 
@@ -695,12 +725,13 @@ public class CapstoneFileReader {
 
     // Find initial solution (greedy), satisfying all hard clauses if possible. 
     // Returns assignment as int[numVariables] with values 0 or 1.
+    /***************************  Deprecated: use RandomRestarts() instead******************************************
     private int[] InitialSolution(boolean softOptimize, boolean optimize, int maxFaults) {
         initialSol = new int[numVariables];
 
         // Step 1) Set all variables, based on a random or greedy assignment
         double rand = Math.random();
-        if (rand < 0.3){
+        if (rand < 1){ 
             for (int i = 0; i < initialSol.length; i++) { initialSol[i] = -1;} // Defaults all to false (-1)
             if (debug)
                 System.out.println("Initial solution: All false");
@@ -771,8 +802,8 @@ public class CapstoneFileReader {
             String unsatStrs[];
 
             unsatStrs = unsatClauses(hardLits, hardValues, hardIndices, initialSol);
-            String unsatStr = unsatStrs[0]; // Remove extra separator
-            String floats = unsatStrs[1]; // Remove extra separator
+            String unsatStr = unsatStrs[0]; 
+            String floats = unsatStrs[1]; 
             
             if (unsatStr.length() == 0) // All hard clauses are satisfied
                 return initialSol;
@@ -787,6 +818,9 @@ public class CapstoneFileReader {
                                 .mapToInt(Integer::parseInt)
                                 .toArray();
 
+
+            System.out.println("Unsatisfied hard clauses: " + Arrays.toString(numbers));
+            System.out.println("Corresponding floats: " + Arrays.toString(floatsArr));
             // We also generate an array of the actual clause indices
             int[] clauses = null;
 
@@ -895,17 +929,140 @@ public class CapstoneFileReader {
 
             if (faults >= maxFaults){ // No progress made in maxFault iterations, so break
                 if (debug)
-                    System.out.println("No progress made in two iterations, ending initial solution search");
+                    System.out.println("No progress made in " + maxFaults + " iterations, ending initial solution search");
+                return initialSol;
+            }
+        }
+    }*/
+
+
+    public int[] RandomRestarts(int[] InitialSolution, int maxFaults) {
+        initialSol = new int[InitialSolution.length];
+
+        for (int i = 0; i < InitialSolution.length; i++)
+            initialSol[i] = InitialSolution[i];
+
+        // Attempt to satisfy all hard clauses
+        int prevVars = Integer.MAX_VALUE; 
+        int faults = 0;
+
+        // Run until no progress has been made with the number of unsatisfied hard literals, maxFaults times consecutively
+        while (true){
+            // Step 2) Generate list of unsatisfied hard clauses, and their floats
+            int[] hardLits = getHardLiterals();
+            int[] hardValues = getHardValues();
+            int theUnsatClauses[][];
+
+            theUnsatClauses = unsatClausesPrim(hardLits, hardValues, hardIndices, initialSol);
+
+            numbers = new int[theUnsatClauses.length];
+            floatsArr = new int[theUnsatClauses.length];
+
+            for (int i = 0; i < numbers.length; i++){
+                numbers[i] = theUnsatClauses[i][0];
+                floatsArr[i] = theUnsatClauses[i][1];
+            }
+
+            System.out.println("Unsatisfied clause indices: " + Arrays.toString(numbers));
+            System.out.println("Unsatisfied clause floats: " + Arrays.toString(floatsArr));
+
+            if (numbers.length == 0) // All hard clauses are satisfied
+                return initialSol;
+
+            // Step 3) Find the unsatisfied hard clauses with the lowest float
+            int minFloat = Integer.MAX_VALUE;
+            int minInd = 0;
+            for (int i = 0; i < floatsArr.length; i++){
+                if (floatsArr[i] < minFloat){
+                    minInd = i;
+                    minFloat = floatsArr[i];
+                }    
+            }
+
+            int totalVarCount = 0;
+            for (int i = 0; i < numbers.length; i++)
+                totalVarCount += hardIndices[numbers[i]+1] - hardIndices[numbers[i]];
+
+
+            // Step 3) Flip the variable in that clause which helps the most hard clauses if flipped
+            int[] varsInClause = Arrays.copyOfRange(hardLits, hardIndices[numbers[minInd]], hardIndices[numbers[minInd]+1]);
+
+            int[][] flipDifference = new int[varsInClause.length][2]; // How many MORE clauses the flipped variable appears in (want maximized for flips)
+
+            for (int i = 0; i < varsInClause.length; i++){
+                int myVar = varsInClause[i]; // Variable 
+                if (debug)
+                    System.out.println("Considering flipping variable " + (myVar));
+                // Count occurrences in all hard clauses
+                flipDifference[i][0] = myVar; // Store variable
+                int[] altSol = initialSol.clone();
+                altSol[Math.abs(myVar)-1] *= -1; // Flip variable
+
+                int[][] altunsatClses = unsatClausesPrim(hardLits, hardValues, hardIndices, altSol);
+
+                if (altunsatClses.length == 0){ // All hard clauses satisfied if this variable is flipped
+                    initialSol = altSol;
+                    return initialSol;
+                }
+                // This if statement is actually semi-necessary, as if all clauses are satisfied, the split function returns an array of length 1 with an empty string
+
+                int countIfFlipped = altunsatClses.length;
+                int countIfNot = theUnsatClauses.length;
+                
+
+                if (debug){
+                    System.out.println("If flipped: |" + Arrays.toString(altunsatClses[0]) + "| with count " + countIfFlipped);
+                    System.out.println("If not flipped: |" + Arrays.toString(theUnsatClauses[0])  + "| with count " + countIfNot);
+                }
+
+
+                // Calculate difference in unsat clause count if flipped
+                flipDifference[i][1] =  countIfNot - countIfFlipped; // Positive value means flipping helps
+            }
+
+
+            // Find variable with best hard clause count
+            int maxFlips = Integer.MIN_VALUE;
+            int inds = 0;
+            for (int i = 0; i < flipDifference.length; i++){
+                if (flipDifference[i][1] > maxFlips){
+                    maxFlips = flipDifference[i][1];
+                    inds = i;
+                }    
+            }
+            
+            if (maxFlips <= 0){
+                if (debug)
+                    System.out.println("No beneficial flips found, defaulting to first variable in clause");
+                inds = 0; // Default to first variable in clause if no beneficial flips found
+            }
+
+            if (debug)
+                System.out.println("Flipping variable " + (flipDifference[inds][0]) + " which helps " + flipDifference[inds][1] + " clauses");
+
+            // Flip variable with best hard count
+            initialSol[Math.abs(flipDifference[inds][0])-1] *= -1; // Flip variable
+
+
+            if (prevVars <= totalVarCount){ // No progress made
+                faults++;
+            }
+            else{
+                faults = 0;
+                prevVars = totalVarCount;
+            }
+
+            if (faults >= maxFaults){ // No progress made in maxFault iterations, so break
+                System.out.println("No progress made in " + maxFaults + " iterations, ending initial solution search");
                 return initialSol;
             }
         }
     }
-
     
 
 
     // Helper and auxiliary functions
-    public String[] unsatClauses(int[] literals, int[] values, int[] indices, int[] assignments){
+    /*public String[] unsatClauses(int[] literals, int[] values, int[] indices, int[] assignments){
         String[] unsatStr = {"", ""};
         int val = 0;
         int curVar;
@@ -936,6 +1093,47 @@ public class CapstoneFileReader {
         }
         
         return unsatStr; // Remove extra separator at end
+
+    }*/
+
+    public int[][] unsatClausesPrim(int[] literals, int[] values, int[] indices, int[] assignments){
+        int[][] unsatArr;
+        int[][] initialArr;
+        int val = 0;
+        int curVar;
+
+        initialArr = new int[getHardIndices().length][2]; // Initial 2D array to store all unsat clauses, which will be trimmed later on
+
+        int curIndex = 0;
+        // Assign them all to an array
+        for (int i = 0; i < indices.length-1; i++){
+            // Check if i-th clause is satisfied   
+            val = 0;         
+            for (int j = 0; j < (indices[i+1]-indices[i]); j++){
+                // Looping through every variable in the clause, check if it is satisfied.
+                curVar = literals[indices[i]+j];
+
+                for (int l = 1; l <= assignments.length; l++)
+                    if ((l)*assignments[l-1] == curVar)
+                        val++;
+            }
+            if (val < values[i])
+            {
+                initialArr[curIndex][0] = i;
+                initialArr[curIndex][1] = values[i] - val;
+                curIndex++;
+            }                    
+        }
+
+        // Trim array to correct size
+        unsatArr = new int[curIndex][2];
+
+        for (int i = 0; i < curIndex; i++){
+            unsatArr[i][0] = initialArr[i][0];
+            unsatArr[i][1] = initialArr[i][1];
+        }
+        
+        return unsatArr; // Remove extra separator at end
 
     }
 
@@ -1071,6 +1269,7 @@ public class CapstoneFileReader {
             literals[start + pos] = Integer.parseInt(in[i]);
             pos++;
         }
+        System.out.println("Unorganized: " + Arrays.toString(literals));
     }
 
 
@@ -1147,7 +1346,7 @@ public class CapstoneFileReader {
     // Main method for quick testing
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", true);
+        reader.InitializeClauses("thirdtest.txt", false);
     }
 
 }
