@@ -293,13 +293,11 @@ public class CapstoneFileReader {
 
         if (rand < 0.3){ 
             for (int i = 0; i < insol.length; i++) { insol[i] = -1;} // Defaults all to false (-1)
-            if (debug)
-                System.out.println("Initial solution: All false");
+            System.out.println("Initial solution: All false");
         }
         else if (rand < 0.6){
             for (int i = 0; i < insol.length; i++) { insol[i] = 1;} // Defaults all to true (1)
-            if (debug)
-                System.out.println("Initial solution: All true");
+            System.out.println("Initial solution: All true");
         }
         else{
             for (int i = 0; i < insol.length; i++) { // Randomly assigns each variable
@@ -308,8 +306,7 @@ public class CapstoneFileReader {
                 else
                     insol[i] = 1;
             }
-            if (debug)
-                System.out.println("Initial solution: Random");
+            System.out.println("Initial solution: Random");
         }
 
 
