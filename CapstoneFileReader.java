@@ -964,9 +964,7 @@ public class CapstoneFileReader {
             int temp = randPicks[i];
             randPicks[i] = randPicks[j];
             randPicks[j] = temp;
-        }
-        System.out.println("THE THANGS: " + Arrays.toString(randPicks));
-        
+        }        
 
         // Run until no progress has been made with the number of unsatisfied hard literals, maxFaults times consecutively
         while (true){
