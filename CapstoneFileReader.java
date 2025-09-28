@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class CapstoneFileReader {
 
@@ -249,7 +250,12 @@ public class CapstoneFileReader {
     // Deprecated
     //public int[] getLiterals() { return literals; }
 
-    public void InitializeClauses(String path, boolean Debug){
+    public boolean InitializeClauses(boolean Debug){
+
+
+         Scanner sc = new Scanner(System.in);
+        System.out.println("Please enter path of the file");
+        String path = sc.nextLine();
         StartTimer();
         debug = Debug;
 
@@ -258,12 +264,12 @@ public class CapstoneFileReader {
 
         if (!success){
             System.err.println("Issue encountered during file read. Aborting...");
-            return;
+            return success;
         }
 
         if (clauses.length == 0){
             System.err.println("File read succesfully, though no clauses found. Aborting...");
-            return;
+            return success;
         }
 
         // File read successfully, proceed to optimization
@@ -327,6 +333,7 @@ public class CapstoneFileReader {
         }
 
         writeToFile("Preprocessing_Output.txt");
+        return success;
         
     }
 
@@ -577,7 +584,8 @@ public class CapstoneFileReader {
         int n = clauseLengths.length;
         for (i = 0; i < n - 1; i++) {
             for (int j = 0; j < n - i - 1; j++) {
-                if (clauseLengths[j] > clauseLengths[j + 1]) {
+                if (clauseLengths[j] > clauseLengths[j + 1] ||
+                (clauseLengths[j] == clauseLengths[j + 1] && clauses[j].compareTo(clauses[j + 1]) > 0)) { // Sorts by length and puts identical clauses together
                     // swap clauses
                     String sTemp = clauses[j];
                     clauses[j] = clauses[j+1];
@@ -604,6 +612,7 @@ public class CapstoneFileReader {
                     iTemp = values[j];
                     values[j] = values[j + 1];
                     values[j + 1] = iTemp;
+                
                 }
             }
         }
@@ -1350,10 +1359,11 @@ public class CapstoneFileReader {
     }
 
     // Main method for quick testing
-    /* 
+    
     public static void main(String[] args) {
         CapstoneFileReader reader = new CapstoneFileReader();
-        reader.InitializeClauses("thirdtest.txt", true);
-    }*/
+        Scanner sc = new Scanner(System.in);
+        reader.InitializeClauses(true);
+    }
 
 }
